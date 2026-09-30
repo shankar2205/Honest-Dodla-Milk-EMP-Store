@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import AdminShell from "../../../components/AdminShell";
+import AdminShell from "../../../../components/AdminShell";
 import { supabase } from "../../../../lib/supabase";
 
 export default function EditEmployee() {
