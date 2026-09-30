@@ -1,6 +1,8 @@
 package com.dodla.honestmilk.counter
 
+import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
+import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.postgrest.from
 import kotlinx.serialization.Serializable
 import java.time.Instant
@@ -31,10 +33,10 @@ class CounterRepository {
     suspend fun signOut(){supabase.auth.signOut()}
 
     suspend fun products():List<ProductRow> =
-        supabase.from("products").select { filter { eq("active",true) }; order("name") }.decodeList()
+        supabase.from("products").select { filter { eq("active",true) }; order(column = "name", order = Order.ASCENDING) }.decodeList()
 
     suspend fun variants():List<VariantRow> =
-        supabase.from("product_variants").select { filter { eq("active",true) }; order("variant_name") }.decodeList()
+        supabase.from("product_variants").select { filter { eq("active",true) }; order(column = "variant_name", order = Order.ASCENDING) }.decodeList()
 
     suspend fun employees(search:String=""):List<EmployeeRow> =
         supabase.from("employees").select {
