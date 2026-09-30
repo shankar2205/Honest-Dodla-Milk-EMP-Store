@@ -99,7 +99,7 @@ fun CounterFlow(repo:CounterRepository,scope:CoroutineScope,onLogout:()->Unit){
     fun loadEmployees(q:String){
         scope.launch{
             runCatching{repo.employees(q)}
-                .onSuccess{employees=it}
+                .onSuccess{employees=it.map { row -> Employee(row.id,row.name,row.department ?: "",row.employee_code ?: row.guest_code ?: "") }}
                 .onFailure{error=it.message ?: "Unable to load employees."}
         }
     }
@@ -114,7 +114,7 @@ fun CounterFlow(repo:CounterRepository,scope:CoroutineScope,onLogout:()->Unit){
                     Product(v.id,p.name,v.variant_name,v.price,v.unit_volume_ml)
                 }
             }
-            employees=repo.employees()
+            .also { rows -> employees=rows.map { row -> Employee(row.id,row.name,row.department ?: "",row.employee_code ?: row.guest_code ?: "") } }
         }.onFailure{error=it.message ?: "Unable to load counter data."}
         loading=false
     }
