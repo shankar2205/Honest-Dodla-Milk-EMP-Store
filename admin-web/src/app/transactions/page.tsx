@@ -1,4 +1,5 @@
 "use client";
+import AdminShell from "../../components/AdminShell";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
