@@ -114,7 +114,7 @@ fun CounterFlow(repo:CounterRepository,scope:CoroutineScope,onLogout:()->Unit){
                     Product(v.id,p.name,v.variant_name,v.price,v.unit_volume_ml)
                 }
             }
-            .also { rows -> employees=rows.map { row -> Employee(row.id,row.name,"",row.identifier) } }
+            
         }.onFailure{error=it.message ?: "Unable to load counter data."}
         loading=false
     }
