@@ -1,0 +1,16 @@
+"use client";
+
+import { FormEvent, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { supabase } from "../../../lib/supabase";
+
+export default function NewEmployeePage() {
+  const router=useRouter(); const [name,setName]=useState(""); const [idType,setIdType]=useState("EMPLOYEE"); const [code,setCode]=useState(""); const [department,setDepartment]=useState(""); const [phone,setPhone]=useState(""); const [error,setError]=useState(""); const [saving,setSaving]=useState(false);
+  async function submit(e:FormEvent){ e.preventDefault(); setError(""); setSaving(true);
+    const payload = idType==="EMPLOYEE" ? {name, id_type:"EMPLOYEE", employee_code:code.trim(), guest_code:null, department:department||null, phone:null} : {name, id_type:"GUEST", employee_code:null, guest_code:code.trim(), department:department||null, phone:phone||null};
+    const {error}=await supabase.from("employees").insert(payload);
+    if(error){ setError(error.message); setSaving(false); return; } router.replace("/employees");
+  }
+  return <div className="admin-shell"><aside className="sidebar"><div className="sidebar-brand">Honest Milk · Admin</div><nav className="nav"><Link className="nav-item" href="/dashboard">Dashboard</Link><Link className="nav-item active" href="/employees">Employees</Link><Link className="nav-item" href="/products">Products & Prices</Link><Link className="nav-item" href="/transactions">Transactions</Link></nav></aside><main className="main"><header className="topbar"><div><h1>Add Employee</h1><p>Create a permanent employee or guest identifier.</p></div></header><section className="panel form-panel"><form onSubmit={submit}><div className="field"><label>Employee type</label><select value={idType} onChange={e=>setIdType(e.target.value)}><option value="EMPLOYEE">Employee</option><option value="GUEST">Guest</option></select></div><div className="field"><label>Name</label><input value={name} onChange={e=>setName(e.target.value)} required /></div><div className="field"><label>{idType==="EMPLOYEE" ? "Employee ID" : "Guest ID"}</label><input value={code} onChange={e=>setCode(e.target.value.toUpperCase())} placeholder={idType==="EMPLOYEE" ? "EMP1025" : "GUEST001"} required /></div><div className="field"><label>Department</label><input value={department} onChange={e=>setDepartment(e.target.value)} /></div>{idType==="GUEST" && <div className="field"><label>Phone</label><input value={phone} onChange={e=>setPhone(e.target.value)} /></div>}{error && <p className="error-text">{error}</p>}<div className="form-actions"><Link className="secondary-button" href="/employees">Cancel</Link><button className="primary-button" disabled={saving}>{saving?"Saving...":"Save employee"}</button></div></form></section></main></div>;
+}
