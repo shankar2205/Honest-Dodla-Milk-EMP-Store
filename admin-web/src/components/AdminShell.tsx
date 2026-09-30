@@ -1,0 +1,4 @@
+"use client";
+import{useEffect,useState}from"react";import{useRouter}from"next/navigation";import{supabase}from"../../lib/supabase";
+export default function AdminShell({children}:{children:React.ReactNode}){const r=useRouter();const[ready,setReady]=useState(false);
+useEffect(()=>{let mounted=true;supabase.auth.getSession().then(async({data})=>{if(!data.session){r.replace("/login");return}const{data:p}=await supabase.from("profiles").select("role,active").eq("id",data.session.user.id).single();if(!p?.active||p.role!=="ADMIN"){r.replace("/transactions");return}if(mounted)setReady(true)});return()=>{mounted=false}},[r]);if(!ready)return <main className="login-shell"><section className="login-card"><h1>Checking access…</h1></section></main>;return <>{children}</>}
