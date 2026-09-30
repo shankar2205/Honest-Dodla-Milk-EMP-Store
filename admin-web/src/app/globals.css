@@ -21,3 +21,4 @@ h1,h2,h3,p { margin-top:0; } .login-card h1 { margin-bottom:8px; font-size:26px;
 .form-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:22px; }
 .secondary-button { display:inline-block; padding:12px 16px; border:1px solid var(--border); border-radius:10px; background:#fff; font-weight:700; }
 .secondary-button:hover { background:#f8fafc; }
+.panel-heading{display:flex;justify-content:space-between;align-items:center;gap:16px}.panel-heading h2{margin:0}.panel-heading a{color:var(--blue);font-weight:700;font-size:13px}.muted-cell{color:var(--muted);font-size:12px}
