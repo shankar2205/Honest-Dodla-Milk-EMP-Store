@@ -33,10 +33,10 @@ class CounterRepository {
     suspend fun signOut(){supabase.auth.signOut()}
 
     suspend fun products():List<ProductRow> =
-        supabase.from("products").select { filter { eq("active",true) }; order(column = "name", order = Order.ASCENDING) }.decodeList()
+        supabase.from("products").select { filter { eq("active",true) }; order(column = "name", order = Order.ASCENDING, nullsFirst = false) }.decodeList()
 
     suspend fun variants():List<VariantRow> =
-        supabase.from("product_variants").select { filter { eq("active",true) }; order(column = "variant_name", order = Order.ASCENDING) }.decodeList()
+        supabase.from("product_variants").select { filter { eq("active",true) }; order(column = "variant_name", order = Order.ASCENDING, nullsFirst = false) }.decodeList()
 
     suspend fun employees(search:String=""):List<EmployeeRow> =
         supabase.from("employees").select {
