@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - feature/android-counter
+      - feature/android-counter-clean
   pull_request:
     branches:
       - Main
