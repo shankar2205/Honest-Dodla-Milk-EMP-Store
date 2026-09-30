@@ -11,7 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 data class Product(val name:String,val variant:String,val price:Int,val volumeMl:Int)
-data class Employee(val name:String,val id:String,val department:String,val todayLitres:Double,val monthLitres:Double)
+data class Employee(val name:String,val id:String,val department:String)
 
 class MainActivity:ComponentActivity(){override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState);setContent{CounterApp()}}}
 
