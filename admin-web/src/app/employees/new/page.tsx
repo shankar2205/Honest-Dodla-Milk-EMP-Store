@@ -3,7 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { supabase } from "../../../../lib/supabase";
+import { supabase } from "../../../lib/supabase";
 
 export default function NewEmployeePage() {
   const router=useRouter(); const [name,setName]=useState(""); const [idType,setIdType]=useState("EMPLOYEE"); const [code,setCode]=useState(""); const [generated,setGenerated]=useState(""); const [department,setDepartment]=useState(""); const [phone,setPhone]=useState(""); const [error,setError]=useState(""); const [saving,setSaving]=useState(false);
