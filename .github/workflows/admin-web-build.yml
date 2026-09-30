@@ -3,6 +3,7 @@ name: Admin Web Build
 on:
   push:
     branches:
+      - Main
       - feature/admin-reports
   pull_request:
     branches:
