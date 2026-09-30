@@ -7,3 +7,10 @@ alter view public.transaction_report set (security_invoker = true);
 -- caller's role and does not expose profile rows.
 revoke all on function public.current_user_role() from public;
 grant execute on function public.current_user_role() to authenticated;
+
+
+-- Make the profile self-read policy explicit about active accounts.
+drop policy if exists "users can read their own profile" on public.profiles;
+create policy "users can read their own profile" on public.profiles
+for select to authenticated
+using (id = auth.uid() and active = true);
