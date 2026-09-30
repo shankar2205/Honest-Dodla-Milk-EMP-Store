@@ -10,7 +10,7 @@ val supabaseKey = providers.gradleProperty("SUPABASE_PUBLISHABLE_KEY").orElse(""
 
 android {
     namespace = "com.dodla.honestmilk.counter"
-    compileSdk = 35
+    compileSdk = 36
     defaultConfig {
         applicationId = "com.dodla.honestmilk.counter"
         minSdk = 26
