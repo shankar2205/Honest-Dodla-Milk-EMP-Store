@@ -50,7 +50,7 @@ class CounterRepository {
                     }
                 }
             }
-            order("name")
+            order(column = "name", order = Order.ASCENDING)
             limit(10)
         }.decodeList()
 
