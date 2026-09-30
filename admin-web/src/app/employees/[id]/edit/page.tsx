@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import AdminShell from "../../../components/AdminShell";
 import { supabase } from "../../../../lib/supabase";
 
 export default function EditEmployee() {
@@ -48,7 +49,8 @@ export default function EditEmployee() {
   }
 
   return (
-    <div className="admin-shell">
+    <AdminShell>
+      <div className="admin-shell">
       <aside className="sidebar">
         <div className="sidebar-brand">Honest Milk · Admin</div>
       </aside>
@@ -83,6 +85,7 @@ export default function EditEmployee() {
           </form>
         </section>
       </main>
-    </div>
+      </div>
+    </AdminShell>
   );
 }
