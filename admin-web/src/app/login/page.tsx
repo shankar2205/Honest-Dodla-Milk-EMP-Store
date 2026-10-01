@@ -16,22 +16,44 @@ export default function LoginPage() {
   const [recoveryMode, setRecoveryMode] = useState(false);
 
   useEffect(() => {
+    let active = true;
+
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY") {
+      if (event === "PASSWORD_RECOVERY" && active) {
         setRecoveryMode(true);
         setError("");
         setMessage("Enter a new password for your account.");
       }
     });
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session && window.location.hash.includes("type=recovery")) {
+    (async () => {
+      const url = new URL(window.location.href);
+      const code = url.searchParams.get("code");
+      const recoveryHash = window.location.hash.includes("type=recovery");
+
+      if (code) {
+        const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (exchangeError) {
+          if (active) setError("This password-reset link is invalid or has expired. Please request a new link.");
+        } else if (active) {
+          setRecoveryMode(true);
+          setMessage("Enter a new password for your account.");
+          window.history.replaceState({}, document.title, url.pathname);
+        }
+        return;
+      }
+
+      const { data } = await supabase.auth.getSession();
+      if (active && data.session && recoveryHash) {
         setRecoveryMode(true);
         setMessage("Enter a new password for your account.");
       }
-    });
+    })();
 
-    return () => listener.subscription.unsubscribe();
+    return () => {
+      active = false;
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
