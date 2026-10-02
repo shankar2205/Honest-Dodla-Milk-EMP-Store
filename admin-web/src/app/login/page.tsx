@@ -82,7 +82,7 @@ export default function LoginPage() {
       return;
     }
 
-    router.replace(profile.role === "ADMIN" ? "/dashboard" : "/transactions");
+    router.replace(String(profile.role).toUpperCase() === "ADMIN" ? "/dashboard" : "/transactions");
   }
 
   async function handlePasswordUpdate(event: FormEvent<HTMLFormElement>) {
