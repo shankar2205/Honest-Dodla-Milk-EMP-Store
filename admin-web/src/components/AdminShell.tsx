@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import { supabase } from "../lib/supabase";
 
 const navItems = [
   ["/dashboard", "Dashboard"],
@@ -13,11 +14,18 @@ const navItems = [
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  async function handleSignOut() {
+    await supabase.auth.signOut();
+    router.replace("/login");
+  }
 
   return (
     <div className="admin-shell">
       <aside className="sidebar">
         <div className="sidebar-brand">Honest Milk · Admin</div>
+
         <nav className="nav">
           {navItems.map(([href, label]) => {
             const active =
@@ -35,6 +43,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
             );
           })}
         </nav>
+
+        <button className="signout-button" type="button" onClick={handleSignOut}>
+          Sign out
+        </button>
       </aside>
 
       <main>{children}</main>
