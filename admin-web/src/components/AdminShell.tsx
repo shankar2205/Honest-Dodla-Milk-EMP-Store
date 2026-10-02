@@ -24,15 +24,15 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     const checkAccess = async () => {
       try {
         const sessionResult = await Promise.race([
-          supabase.auth.getSession(),
+          supabase.auth.getUser(),
           new Promise<never>((_, reject) =>
-            setTimeout(() => reject(new Error("Authentication check timed out.")), 10000)
+            setTimeout(() => reject(new Error("Authentication check timed out. Please check your Supabase connection and try again.")), 10000)
           ),
         ]);
 
-        const session = sessionResult.data.session;
+        const user = sessionResult.data.user;
 
-        if (!session) {
+        if (!user) {
           r.replace("/login");
           return;
         }
@@ -41,7 +41,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
           supabase
             .from("profiles")
             .select("role,active")
-            .eq("id", session.user.id)
+            .eq("id", user.id)
             .single(),
           new Promise<never>((_, reject) =>
             setTimeout(() => reject(new Error("Profile access check timed out.")), 10000)
