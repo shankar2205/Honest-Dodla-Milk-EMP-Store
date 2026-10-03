@@ -33,18 +33,23 @@ export default function TransactionsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  async function loadTransactions() {
+  async function loadTransactions(
+    nextFromDate = fromDate,
+    nextToDate = toDate,
+    nextTypeFilter = typeFilter,
+    nextProductFilter = productFilter
+  ) {
     setLoading(true);
     setError("");
 
-    if (fromDate > toDate) {
+    if (nextFromDate > nextToDate) {
       setError("From date cannot be later than To date.");
       setRows([]);
       setLoading(false);
       return;
     }
 
-    const endExclusive = new Date(toDate + "T00:00:00");
+    const endExclusive = new Date(nextToDate + "T00:00:00");
     endExclusive.setDate(endExclusive.getDate() + 1);
 
     let query = supabase
@@ -52,13 +57,13 @@ export default function TransactionsPage() {
       .select(
         "id,employee_name,employee_identifier,id_type,product_name,variant_name,quantity,total_volume_litres,total_amount,transaction_at"
       )
-      .gte("transaction_at", new Date(fromDate + "T00:00:00").toISOString())
+      .gte("transaction_at", new Date(nextFromDate + "T00:00:00").toISOString())
       .lt("transaction_at", endExclusive.toISOString())
       .order("transaction_at", { ascending: false })
       .limit(5000);
 
-    if (typeFilter !== "ALL") query = query.eq("id_type", typeFilter);
-    if (productFilter !== "ALL") query = query.eq("product_name", productFilter);
+    if (nextTypeFilter !== "ALL") query = query.eq("id_type", nextTypeFilter);
+    if (nextProductFilter !== "ALL") query = query.eq("product_name", nextProductFilter);
 
     const { data, error: queryError } = await query;
     if (queryError) {
@@ -178,12 +183,17 @@ export default function TransactionsPage() {
             </div>
           </div>
           <div className="form-actions">
-            <button className="secondary-button" type="button" onClick={() => {
-              setFromDate(today);
-              setToDate(today);
-              setTypeFilter("ALL");
-              setProductFilter("ALL");
-            }}>
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={() => {
+                setFromDate(today);
+                setToDate(today);
+                setTypeFilter("ALL");
+                setProductFilter("ALL");
+                loadTransactions(today, today, "ALL", "ALL");
+              }}
+            >
               Reset
             </button>
             <button className="primary-button" type="button" onClick={loadTransactions}>
