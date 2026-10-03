@@ -152,6 +152,47 @@ export default function TransactionsPage() {
     [rows]
   );
 
+  function exportEmployeeSummaryCsv() {
+    const header = [
+      "Employee / Guest",
+      "ID",
+      "Type",
+      "Transactions",
+      "Quantity",
+      "Volume (L)",
+      "Value (INR)",
+    ];
+
+    const escape = (value: string | number) =>
+      '"' + String(value).replaceAll('"', '""') + '"';
+
+    const csv = [
+      header.map(escape).join(","),
+      ...employeeSummary.map((employee) =>
+        [
+          employee.employee_name,
+          employee.employee_identifier,
+          employee.id_type,
+          employee.transactions,
+          employee.quantity,
+          employee.litres.toFixed(3),
+          employee.amount.toFixed(2),
+        ]
+          .map(escape)
+          .join(",")
+      ),
+    ].join("\n");
+
+    const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download =
+      "honest-milk-employee-summary-" + fromDate + "-to-" + toDate + ".csv";
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   function exportCsv() {
     const header = [
       "Date & Time",
@@ -282,8 +323,18 @@ export default function TransactionsPage() {
 
         <section className="panel table-panel">
           <div className="panel-heading">
-            <h2>Employee-wise summary</h2>
-            <span className="muted-cell">{employeeSummary.length} people</span>
+            <div>
+              <h2>Employee-wise summary</h2>
+              <span className="muted-cell">{employeeSummary.length} people</span>
+            </div>
+            <button
+              className="secondary-button"
+              type="button"
+              onClick={exportEmployeeSummaryCsv}
+              disabled={employeeSummary.length === 0}
+            >
+              Export employee summary
+            </button>
           </div>
           <table>
             <thead>
