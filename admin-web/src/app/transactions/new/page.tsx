@@ -44,7 +44,7 @@ export default function NewTransactionPage() {
       const [employeeResult, productResult, variantResult] = await Promise.all([
         supabase.from("employees").select("id,name,employee_code,guest_code,id_type,department").eq("active", true).order("name"),
         supabase.from("products").select("id,name").eq("active", true).order("name"),
-        supabase.from("product_variants").select("id,product_id,variant_name,unit_volume_ml,price").eq("active", true).order("variant_name"),
+        supabase.from("product_variants").select("id,product_id,variant_name,unit_volume_ml,price,products!inner(active)").eq("active", true).eq("products.active", true).order("variant_name"),
       ]);
       const firstError = employeeResult.error || productResult.error || variantResult.error;
       if (firstError) setError(firstError.message);
@@ -59,7 +59,8 @@ export default function NewTransactionPage() {
   const productMap = useMemo(() => new Map(products.map((product) => [product.id, product.name])), [products]);
   const variantMap = useMemo(() => new Map(variants.map((variant) => [variant.id, variant])), [variants]);
   const selectedEmployee = employees.find((employee) => employee.id === employeeId);
-  const quantityNumber = Math.max(0, Number(quantity) || 0);
+  const quantityNumber = Number(quantity);
+  const validQuantity = Number.isInteger(quantityNumber) && quantityNumber >= 1;
 
   const cartDetails = cart.map((item) => {
     const variant = variantMap.get(item.variantId);
@@ -77,7 +78,7 @@ export default function NewTransactionPage() {
       setError("Select an employee or guest before adding products.");
       return;
     }
-    if (!variantId || quantityNumber < 1) {
+    if (!variantId || !validQuantity) {
       setError("Select a product and enter a quantity of at least 1.");
       return;
     }
@@ -108,6 +109,10 @@ export default function NewTransactionPage() {
     setSuccess("");
     if (!employeeId || cart.length === 0) {
       setError("Select an employee and add at least one product.");
+      return;
+    }
+    if (cart.some((item) => !Number.isInteger(item.quantity) || item.quantity < 1)) {
+      setError("Quantity must be a whole number of at least 1.");
       return;
     }
     setSaving(true);
