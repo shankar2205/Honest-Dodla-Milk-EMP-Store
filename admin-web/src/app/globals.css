@@ -43,3 +43,11 @@ h1,h2,h3,p { margin-top:0; } .login-card h1 { margin-bottom:8px; font-size:26px;
   background: rgba(255,255,255,.10);
   color: #fff;
 }
+
+.success-text { color:#18794e; font-size:13px; margin:10px 0; }
+.transaction-summary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin-top:6px; padding:16px; background:#f8fafc; border:1px solid var(--border); border-radius:12px; }
+.transaction-summary div { display:grid; gap:5px; }
+.transaction-summary span { color:var(--muted); font-size:12px; }
+.transaction-summary strong { font-size:18px; }
+button:disabled, select:disabled { opacity:.55; cursor:not-allowed; }
+@media (max-width:560px) { .transaction-summary { grid-template-columns:1fr; } }
