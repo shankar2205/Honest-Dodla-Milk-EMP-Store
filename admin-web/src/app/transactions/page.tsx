@@ -29,6 +29,7 @@ export default function TransactionsPage() {
   const [toDate, setToDate] = useState(today);
   const [typeFilter, setTypeFilter] = useState("ALL");
   const [productFilter, setProductFilter] = useState("ALL");
+  const [employeeFilter, setEmployeeFilter] = useState("ALL");
   const [rows, setRows] = useState<Tx[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -37,7 +38,8 @@ export default function TransactionsPage() {
     nextFromDate = fromDate,
     nextToDate = toDate,
     nextTypeFilter = typeFilter,
-    nextProductFilter = productFilter
+    nextProductFilter = productFilter,
+    nextEmployeeFilter = employeeFilter
   ) {
     setLoading(true);
     setError("");
@@ -64,6 +66,7 @@ export default function TransactionsPage() {
 
     if (nextTypeFilter !== "ALL") query = query.eq("id_type", nextTypeFilter);
     if (nextProductFilter !== "ALL") query = query.eq("product_name", nextProductFilter);
+    if (nextEmployeeFilter !== "ALL") query = query.eq("employee_identifier", nextEmployeeFilter);
 
     const { data, error: queryError } = await query;
     if (queryError) {
@@ -83,6 +86,56 @@ export default function TransactionsPage() {
     () => Array.from(new Set(rows.map((row) => row.product_name))).sort(),
     [rows]
   );
+
+  const employees = useMemo(
+    () =>
+      Array.from(
+        new Map(
+          rows.map((row) => [
+            row.employee_identifier,
+            { identifier: row.employee_identifier, name: row.employee_name, idType: row.id_type },
+          ])
+        ).values()
+      ).sort((a, b) => a.name.localeCompare(b.name)),
+    [rows]
+  );
+
+  const employeeSummary = useMemo(() => {
+    const grouped = new Map<
+      string,
+      {
+        employee_name: string;
+        employee_identifier: string;
+        id_type: Tx["id_type"];
+        transactions: number;
+        quantity: number;
+        litres: number;
+        amount: number;
+      }
+    >();
+
+    rows.forEach((row) => {
+      const existing = grouped.get(row.employee_identifier);
+      if (existing) {
+        existing.transactions += 1;
+        existing.quantity += row.quantity;
+        existing.litres += Number(row.total_volume_litres);
+        existing.amount += Number(row.total_amount);
+      } else {
+        grouped.set(row.employee_identifier, {
+          employee_name: row.employee_name,
+          employee_identifier: row.employee_identifier,
+          id_type: row.id_type,
+          transactions: 1,
+          quantity: row.quantity,
+          litres: Number(row.total_volume_litres),
+          amount: Number(row.total_amount),
+        });
+      }
+    });
+
+    return Array.from(grouped.values()).sort((a, b) => b.amount - a.amount);
+  }, [rows]);
 
   const totals = useMemo(
     () => ({
@@ -181,6 +234,17 @@ export default function TransactionsPage() {
                 {products.map((product) => <option key={product} value={product}>{product}</option>)}
               </select>
             </div>
+            <div className="field">
+              <label htmlFor="employee-filter">Employee / Guest</label>
+              <select id="employee-filter" value={employeeFilter} onChange={(e) => setEmployeeFilter(e.target.value)}>
+                <option value="ALL">All employees & guests</option>
+                {employees.map((employee) => (
+                  <option key={employee.identifier} value={employee.identifier}>
+                    {employee.name} — {employee.identifier}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           <div className="form-actions">
             <button
@@ -214,6 +278,33 @@ export default function TransactionsPage() {
           <article className="stat"><div className="stat-label">Quantity</div><div className="stat-value">{totals.quantity}</div></article>
           <article className="stat"><div className="stat-label">Volume</div><div className="stat-value">{totals.litres.toFixed(2)} L</div></article>
           <article className="stat"><div className="stat-label">Value</div><div className="stat-value">₹{totals.amount.toFixed(2)}</div></article>
+        </section>
+
+        <section className="panel table-panel">
+          <div className="panel-heading">
+            <h2>Employee-wise summary</h2>
+            <span className="muted-cell">{employeeSummary.length} people</span>
+          </div>
+          <table>
+            <thead>
+              <tr><th>Employee / Guest</th><th>ID</th><th>Type</th><th>Transactions</th><th>Qty</th><th>Volume</th><th>Value</th></tr>
+            </thead>
+            <tbody>
+              {loading ? <tr><td colSpan={7}>Loading...</td></tr> :
+               employeeSummary.length === 0 ? <tr><td colSpan={7}>No employee activity for the selected filters.</td></tr> :
+               employeeSummary.map((employee) => (
+                <tr key={employee.employee_identifier}>
+                  <td><strong>{employee.employee_name}</strong></td>
+                  <td>{employee.employee_identifier}</td>
+                  <td>{employee.id_type === "GUEST" ? "Guest" : "Employee"}</td>
+                  <td>{employee.transactions}</td>
+                  <td>{employee.quantity}</td>
+                  <td>{employee.litres.toFixed(2)} L</td>
+                  <td>₹{employee.amount.toFixed(2)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </section>
 
         <section className="panel table-panel">
