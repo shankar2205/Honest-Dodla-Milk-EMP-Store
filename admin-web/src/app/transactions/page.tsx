@@ -260,7 +260,7 @@ export default function TransactionsPage() {
             >
               Reset
             </button>
-            <button className="primary-button" type="button" onClick={loadTransactions}>
+            <button className="primary-button" type="button" onClick={() => loadTransactions()}>
               Apply filters
             </button>
             <button className="secondary-button" type="button" onClick={exportCsv} disabled={rows.length === 0}>
