@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import AdminShell from "../../components/AdminShell";
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
@@ -24,6 +25,7 @@ export default function TransactionsPage() {
       <div className="main">
         <header className="topbar">
           <div><h1>Transactions</h1><p>Latest employee store activity.</p></div>
+          <Link className="primary-button" href="/transactions/new">New transaction</Link>
         </header>
         {error ? <p className="error-text">{error}</p> : null}
         <section className="panel table-panel"><table><thead><tr><th>Date & time</th><th>Employee</th><th>ID</th><th>Product</th><th>Qty</th><th>Volume</th><th>Amount</th></tr></thead><tbody>{loading ? <tr><td colSpan={7}>Loading...</td></tr> : rows.map((r) => <tr key={r.id}><td>{new Date(r.transaction_at).toLocaleString()}</td><td><strong>{r.employee_name}</strong></td><td>{r.employee_identifier}</td><td>{r.product_name} — {r.variant_name}</td><td>{r.quantity}</td><td>{Number(r.total_volume_litres).toFixed(2)} L</td><td>₹{Number(r.total_amount).toFixed(2)}</td></tr>)}</tbody></table></section>
