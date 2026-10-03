@@ -255,7 +255,7 @@ export default function TransactionsPage() {
                 setToDate(today);
                 setTypeFilter("ALL");
                 setProductFilter("ALL");
-                loadTransactions(today, today, "ALL", "ALL");
+                loadTransactions(today, today, "ALL", "ALL", "ALL");
               }}
             >
               Reset
