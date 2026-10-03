@@ -27,6 +27,8 @@ export default function EmployeesPage() {
   useEffect(load, []);
 
   async function toggle(employee: Employee) {
+    const action = employee.active ? "deactivate" : "activate";
+    if (!window.confirm(`Are you sure you want to ${action} ${employee.name}?`)) return;
     setError("");
     const { error: x } = await supabase.from("employees").update({ active: !employee.active }).eq("id", employee.id);
     if (x) setError(x.message); else load();
