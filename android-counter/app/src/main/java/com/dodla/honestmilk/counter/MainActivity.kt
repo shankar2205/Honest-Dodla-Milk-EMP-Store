@@ -17,7 +17,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 data class Product(val id:String,val name:String,val variant:String,val price:Double,val volumeMl:Int)
-data class Employee(val id:String,val name:String,val department:String,val identifier:String)
+data class Employee(val id:String,val name:String,val department:String,val identifier:String,val type:String)
 
 class MainActivity:ComponentActivity(){
  override fun onCreate(savedInstanceState:Bundle?){super.onCreate(savedInstanceState);setContent{CounterApp{shareReceipt(it)}}}
@@ -58,7 +58,7 @@ class MainActivity:ComponentActivity(){
  var summary by remember{mutableStateOf<EmployeeSummary?>(null)}
  var receipt by remember{mutableStateOf<SavedReceipt?>(null)}
 
- fun loadEmployees(q:String){scope.launch{runCatching{repo.employees(q)}.onSuccess{employees=it.map{r->Employee(r.id,r.name,r.department?:"",r.employee_code?:r.guest_code?:"GUEST")}}.onFailure{error=it.message?:"Unable to load employees."}}}
+ fun loadEmployees(q:String){scope.launch{runCatching{repo.employees(q)}.onSuccess{employees=it.map{r->Employee(r.id,r.name,r.department?:"",r.employee_code?:r.guest_code?:"GUEST",if(r.employee_code!=null)"EMPLOYEE" else "GUEST")}}.onFailure{error=it.message?:"Unable to load employees."}}}
  fun addToCart(){
   val p=selectedProduct?:return
   val existing=cart.firstOrNull{it.product.id==p.id}
@@ -102,17 +102,17 @@ class MainActivity:ComponentActivity(){
     }
    }
    1->{
-    OutlinedTextField(search,{search=it},label={Text("Employee code, name or mobile")},singleLine=true,modifier=Modifier.fillMaxWidth())
+    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){OutlinedTextField(search,{search=it},label={Text("Employee code, name or mobile")},singleLine=true,modifier=Modifier.weight(1f));if(search.isNotBlank())TextButton(onClick={search=""}){Text("CLEAR")}}
     LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp),modifier=Modifier.weight(1f,false)){
      items(employees){e->OutlinedButton(onClick={selectedEmployee=e;error=null;step=2;scope.launch{runCatching{repo.summary(e.id)}.onSuccess{summary=it}.onFailure{error=it.message?:"Unable to load employee summary."}}},modifier=Modifier.fillMaxWidth()){
-      Column(Modifier.fillMaxWidth().padding(4.dp)){Text(e.name,style=MaterialTheme.typography.titleMedium);Text(e.identifier+" · "+e.department)}
+      Column(Modifier.fillMaxWidth().padding(4.dp)){Text(e.name,style=MaterialTheme.typography.titleMedium);Text(e.identifier+" · "+e.department);Text(e.type,style=MaterialTheme.typography.labelSmall)}
      }}
     }
     TextButton(onClick={step=0}){Text("BACK")}
    }
    2->{
     val e=selectedEmployee!!;val s=summary
-    Text("EMPLOYEE",style=MaterialTheme.typography.labelLarge);Text(e.name,style=MaterialTheme.typography.titleLarge);Text(e.identifier+" · "+e.department)
+    Text("EMPLOYEE",style=MaterialTheme.typography.labelLarge);Text(e.name,style=MaterialTheme.typography.titleLarge);Text(e.identifier+" · "+e.department);Text(e.type,style=MaterialTheme.typography.labelMedium)
     HorizontalDivider();Text("CURRENT TRANSACTION",style=MaterialTheme.typography.labelLarge)
     cart.forEach{line->Text(line.product.name+" — "+line.product.variant+" × "+line.quantity);Text("₹"+String.format("%.2f",line.product.price)+" each · ₹"+String.format("%.2f",line.product.price*line.quantity))}
     Text("Transaction total ₹"+String.format("%.2f",cartTotal()),style=MaterialTheme.typography.titleLarge)
