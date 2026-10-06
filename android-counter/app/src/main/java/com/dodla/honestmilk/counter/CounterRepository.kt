@@ -23,7 +23,26 @@ class CounterRepository{
  suspend fun signOut(){supabase.auth.signOut()}
  suspend fun products():List<ProductRow>=supabase.from("products").select{filter{eq("active",true)};order(column="name",order=Order.ASCENDING)}.decodeList()
  suspend fun variants():List<VariantRow>=supabase.from("product_variants").select{filter{eq("active",true)};order(column="variant_name",order=Order.ASCENDING)}.decodeList()
- suspend fun employees(search:String=""):List<EmployeeRow>=supabase.from("employees").select{filter{eq("active",true);if(search.isNotBlank()){or{ilike("name","%$search%");ilike("employee_code","%$search%");ilike("guest_code","%$search%");ilike("phone","%$search%")}}};order(column="name",order=Order.ASCENDING);limit(15)}.decodeList()
+ suspend fun employees(search:String=""):List<EmployeeRow>{
+  val rows=supabase.from("employees").select{filter{eq("active",true)};order(column="name",order=Order.ASCENDING)}.decodeList<EmployeeRow>()
+  if(search.isBlank()) return rows.take(15)
+  val q=search.trim().lowercase()
+  fun score(r:EmployeeRow):Int{
+   val code=r.employee_code?.lowercase().orEmpty()
+   val guest=r.guest_code?.lowercase().orEmpty()
+   val name=r.name.lowercase()
+   val phone=r.phone?.lowercase().orEmpty()
+   return when{
+    code==q||guest==q||phone==q->0
+    code.startsWith(q)||guest.startsWith(q)||phone.startsWith(q)->1
+    name.startsWith(q)->2
+    name.split(" ").any{it.startsWith(q)}->3
+    name.contains(q)||code.contains(q)||guest.contains(q)||phone.contains(q)->4
+    else->99
+   }
+  }
+  return rows.map{it to score(it)}.filter{it.second<99}.sortedWith(compareBy<Pair<EmployeeRow,Int>>{it.second}.thenBy{it.first.name}).take(15).map{it.first}
+ }
  suspend fun summary(employeeId:String):EmployeeSummary{val rows=supabase.from("transactions").select{filter{eq("employee_id",employeeId)}}.decodeList<TransactionHistoryRow>();return EmployeeSummary(rows.size,rows.sumOf{it.quantity},rows.sumOf{it.quantity*it.unit_price})}
  suspend fun save(employeeId:String,lines:List<TransactionLine>):List<SavedTransactionRow>{
   require(lines.isNotEmpty()){"Add at least one product."}
