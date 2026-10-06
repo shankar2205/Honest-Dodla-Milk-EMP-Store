@@ -44,27 +44,135 @@ class MainActivity:ComponentActivity(){
 }
 
 @Composable fun CounterFlow(repo:CounterRepository,scope:CoroutineScope,onShare:(String)->Unit,onLogout:()->Unit){
- var step by remember{mutableIntStateOf(0)};var products by remember{mutableStateOf<List<Product>>(emptyList())};var employees by remember{mutableStateOf<List<Employee>>(emptyList())}
- var selected by remember{mutableStateOf<Product?>(null)};var employee by remember{mutableStateOf<Employee?>(null)};var quantity by remember{mutableIntStateOf(1)};var search by remember{mutableStateOf("")}
- var error by remember{mutableStateOf<String?>(null)};var loading by remember{mutableStateOf(true)};var saving by remember{mutableStateOf(false)};var summary by remember{mutableStateOf<EmployeeSummary?>(null)};var receipt by remember{mutableStateOf<SavedReceipt?>(null)}
+ var step by remember{mutableIntStateOf(0)}
+ var products by remember{mutableStateOf<List<Product>>(emptyList())}
+ var employees by remember{mutableStateOf<List<Employee>>(emptyList())}
+ var cart by remember{mutableStateOf<List<CartLine>>(emptyList())}
+ var selectedProduct by remember{mutableStateOf<Product?>(null)}
+ var selectedEmployee by remember{mutableStateOf<Employee?>(null)}
+ var quantity by remember{mutableIntStateOf(1)}
+ var search by remember{mutableStateOf("")}
+ var error by remember{mutableStateOf<String?>(null)}
+ var loading by remember{mutableStateOf(true)}
+ var saving by remember{mutableStateOf(false)}
+ var summary by remember{mutableStateOf<EmployeeSummary?>(null)}
+ var receipt by remember{mutableStateOf<SavedReceipt?>(null)}
+
  fun loadEmployees(q:String){scope.launch{runCatching{repo.employees(q)}.onSuccess{employees=it.map{r->Employee(r.id,r.name,r.department?:"",r.employee_code?:r.guest_code?:"GUEST")}}.onFailure{error=it.message?:"Unable to load employees."}}}
- LaunchedEffect(Unit){runCatching{val ps=repo.products();val vs=repo.variants();products=vs.mapNotNull{v->ps.find{it.id==v.product_id}?.let{p->Product(v.id,p.name,v.variant_name,p.price,p.unit_volume_ml)}}}.onFailure{error=it.message?:"Unable to load counter data."};loading=false}
+ fun addToCart(){
+  val p=selectedProduct?:return
+  val existing=cart.firstOrNull{it.product.id==p.id}
+  cart=if(existing==null) cart+CartLine(p,quantity) else cart.map{if(it.product.id==p.id)it.copy(quantity=it.quantity+quantity)else it}
+  selectedProduct=null;quantity=1
+ }
+ fun cartTotal()=cart.sumOf{it.product.price*it.quantity}
+
+ LaunchedEffect(Unit){runCatching{val ps=repo.products();val vs=repo.variants();products=vs.mapNotNull{v->ps.find{it.id==v.product_id}?.let{p->Product(v.id,p.name,v.variant_name,p.price,v.unit_volume_ml)}}}.onFailure{error=it.message?:"Unable to load counter data."};loading=false}
  LaunchedEffect(search,step){if(step==1)loadEmployees(search)}
- Column(Modifier.fillMaxSize().padding(20.dp),verticalArrangement=Arrangement.spacedBy(14.dp)){
+
+ Column(Modifier.fillMaxSize().padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
   Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){Text("HONEST MILK",style=MaterialTheme.typography.titleLarge);TextButton(onClick=onLogout){Text("LOG OUT")}}
-  Text(when(step){0->"TAKE PRODUCT";1->"SELECT EMPLOYEE";2->"CONFIRM";else->"DIGITAL RECEIPT"},style=MaterialTheme.typography.headlineMedium);error?.let{Text(it,color=MaterialTheme.colorScheme.error)}
+  Text(when(step){0->"TAKE PRODUCTS";1->"SELECT EMPLOYEE";2->"CONFIRM";else->"DIGITAL RECEIPT"},style=MaterialTheme.typography.headlineMedium)
+  error?.let{Text(it,color=MaterialTheme.colorScheme.error)}
   when(step){
-   0->{if(loading)CircularProgressIndicator();products.forEach{p->OutlinedButton(onClick={selected=p;quantity=1;error=null},modifier=Modifier.fillMaxWidth().height(82.dp)){Column(horizontalAlignment=Alignment.CenterHorizontally){Text(p.name+" — "+p.variant,style=MaterialTheme.typography.titleLarge);Text("₹"+String.format("%.2f",p.price))}}};selected?.let{p->Text("Selected: "+p.variant,style=MaterialTheme.typography.titleMedium);Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){Button(onClick={if(quantity>1)quantity--}){Text("−")};Text("  "+quantity+"  ",style=MaterialTheme.typography.titleLarge);Button(onClick={quantity++}){Text("+")}};Text("Current total ₹"+String.format("%.2f",p.price*quantity),style=MaterialTheme.typography.titleLarge);Button(onClick={step=1},modifier=Modifier.fillMaxWidth().height(56.dp)){Text("NEXT")}}}
-   1->{OutlinedTextField(search,{search=it},label={Text("Employee code, name or mobile")},singleLine=true,modifier=Modifier.fillMaxWidth());LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp),modifier=Modifier.weight(1f,false)){items(employees){e->OutlinedButton(onClick={employee=e;error=null;step=2;scope.launch{runCatching{repo.summary(e.id)}.onSuccess{summary=it}.onFailure{error=it.message?:"Unable to load employee summary."}}},modifier=Modifier.fillMaxWidth()){Column(Modifier.fillMaxWidth().padding(4.dp)){Text(e.name,style=MaterialTheme.typography.titleMedium);Text(e.identifier+" · "+e.department)}}}};TextButton(onClick={step=0}){Text("BACK")}}
-   2->{val p=selected!!;val e=employee!!;val s=summary;Text("EMPLOYEE",style=MaterialTheme.typography.labelLarge);Text(e.name,style=MaterialTheme.typography.titleLarge);Text(e.identifier+" · "+e.department);HorizontalDivider();Text("CURRENT TRANSACTION",style=MaterialTheme.typography.labelLarge);Text(p.name+" — "+p.variant+" × "+quantity);Text("Unit price ₹"+String.format("%.2f",p.price));Text("Transaction total ₹"+String.format("%.2f",p.price*quantity),style=MaterialTheme.typography.titleLarge);HorizontalDivider();Text("CONSUMPTION TILL TODAY",style=MaterialTheme.typography.labelLarge);Text("Previous transactions: "+(s?.transactionCount?:0));Text("Previous quantity: "+(s?.quantity?:0));Text("Previous bill value: ₹"+String.format("%.2f",s?.value?:0.0));Text("After this: "+((s?.quantity?:0)+quantity)+" units · ₹"+String.format("%.2f",(s?.value?:0.0)+(p.price*quantity)));Button(enabled=!saving,onClick={saving=true;error=null;scope.launch{runCatching{repo.save(e.id,p.id,quantity,p.price)}.onSuccess{saved->receipt=SavedReceipt(saved.id,e,p,quantity,p.price*quantity,s?.quantity?:0,s?.value?:0.0,saved.transactionAt);step=3}.onFailure{error=it.message?:"Unable to save transaction."};saving=false}},modifier=Modifier.fillMaxWidth().height(60.dp)){Text(if(saving)"SAVING..." else "CONFIRM & FINISH")};TextButton(onClick={step=1},enabled=!saving){Text("BACK")}}
-   else->{val r=receipt!!;Card(Modifier.fillMaxWidth()){Column(Modifier.padding(18.dp),verticalArrangement=Arrangement.spacedBy(8.dp)){Text("✓ TRANSACTION COMPLETE",style=MaterialTheme.typography.headlineSmall);Text("HONEST MILK",style=MaterialTheme.typography.titleLarge);Text("Receipt: "+r.id.take(8).uppercase());Text("Employee: "+r.employee.name);Text("Employee ID: "+r.employee.identifier);Text(r.product.name+" — "+r.product.variant);Text("Quantity: "+r.quantity);Text("Unit price: ₹"+String.format("%.2f",r.product.price));Text("Total bill: ₹"+String.format("%.2f",r.total),style=MaterialTheme.typography.titleMedium);HorizontalDivider();Text("Consumption till today");Text("Quantity: "+(r.previousQuantity+r.quantity));Text("Bill value: ₹"+String.format("%.2f",r.previousValue+r.total))}};Button(onClick={onShare(buildReceiptText(r))},modifier=Modifier.fillMaxWidth().height(56.dp)){Text("SHARE DIGITAL RECEIPT")};Button(onClick={selected=null;employee=null;quantity=1;search="";summary=null;receipt=null;error=null;step=0},modifier=Modifier.fillMaxWidth().height(56.dp)){Text("NEW TRANSACTION")}}
+   0->{
+    if(loading)CircularProgressIndicator()
+    products.forEach{p->
+     OutlinedButton(onClick={selectedProduct=p;quantity=1;error=null},modifier=Modifier.fillMaxWidth().height(72.dp)){
+      Column(horizontalAlignment=Alignment.CenterHorizontally){Text(p.name+" — "+p.variant,style=MaterialTheme.typography.titleMedium);Text("₹"+String.format("%.2f",p.price))}
+     }
+    }
+    selectedProduct?.let{p->
+     Text("Add: "+p.name+" — "+p.variant,style=MaterialTheme.typography.titleMedium)
+     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){Button(onClick={if(quantity>1)quantity--}){Text("−")};Text("  "+quantity+"  ",style=MaterialTheme.typography.titleLarge);Button(onClick={quantity++}){Text("+")}}
+     Button(onClick={addToCart},modifier=Modifier.fillMaxWidth().height(52.dp)){Text("ADD TO CART")}
+    }
+    if(cart.isNotEmpty()){
+     HorizontalDivider()
+     Text("CURRENT CART",style=MaterialTheme.typography.labelLarge)
+     cart.forEachIndexed{index,line->
+      Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
+       Column(Modifier.weight(1f)){Text(line.product.name+" — "+line.product.variant);Text("₹"+String.format("%.2f",line.product.price)+" × "+line.quantity)}
+       Text("₹"+String.format("%.2f",line.product.price*line.quantity))
+       TextButton(onClick={cart=cart.filterIndexed{i,_->i!=index}}){Text("REMOVE")}
+      }
+     }
+     Text("Cart total ₹"+String.format("%.2f",cartTotal()),style=MaterialTheme.typography.titleLarge)
+     Button(onClick={step=1},modifier=Modifier.fillMaxWidth().height(56.dp)){Text("NEXT")}
+    }
+   }
+   1->{
+    OutlinedTextField(search,{search=it},label={Text("Employee code, name or mobile")},singleLine=true,modifier=Modifier.fillMaxWidth())
+    LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp),modifier=Modifier.weight(1f,false)){
+     items(employees){e->OutlinedButton(onClick={selectedEmployee=e;error=null;step=2;scope.launch{runCatching{repo.summary(e.id)}.onSuccess{summary=it}.onFailure{error=it.message?:"Unable to load employee summary."}}},modifier=Modifier.fillMaxWidth()){
+      Column(Modifier.fillMaxWidth().padding(4.dp)){Text(e.name,style=MaterialTheme.typography.titleMedium);Text(e.identifier+" · "+e.department)}
+     }}
+    }
+    TextButton(onClick={step=0}){Text("BACK")}
+   }
+   2->{
+    val e=selectedEmployee!!;val s=summary
+    Text("EMPLOYEE",style=MaterialTheme.typography.labelLarge);Text(e.name,style=MaterialTheme.typography.titleLarge);Text(e.identifier+" · "+e.department)
+    HorizontalDivider();Text("CURRENT TRANSACTION",style=MaterialTheme.typography.labelLarge)
+    cart.forEach{line->Text(line.product.name+" — "+line.product.variant+" × "+line.quantity);Text("₹"+String.format("%.2f",line.product.price)+" each · ₹"+String.format("%.2f",line.product.price*line.quantity))}
+    Text("Transaction total ₹"+String.format("%.2f",cartTotal()),style=MaterialTheme.typography.titleLarge)
+    HorizontalDivider();Text("CONSUMPTION TILL TODAY",style=MaterialTheme.typography.labelLarge)
+    Text("Previous transactions: "+(s?.transactionCount?:0));Text("Previous quantity: "+(s?.quantity?:0));Text("Previous bill value: ₹"+String.format("%.2f",s?.value?:0.0))
+    Text("After this: "+((s?.quantity?:0)+cart.sumOf{it.quantity})+" units · ₹"+String.format("%.2f",(s?.value?:0.0)+cartTotal()))
+    Button(enabled=!saving,onClick={
+     saving=true;error=null
+     scope.launch{
+      runCatching{repo.save(e.id,cart.map{TransactionLine(it.product.id,it.quantity,it.product.price)})}
+       .onSuccess{saved->receipt=SavedReceipt(saved.map{it.id},e,cart,cartTotal(),s?.quantity?:0,s?.value?:0.0,saved.firstOrNull()?.transaction_at?:"");step=3}
+       .onFailure{error=it.message?:"Unable to save transaction."}
+      saving=false
+     }
+    },modifier=Modifier.fillMaxWidth().height(60.dp)){Text(if(saving)"SAVING..." else "CONFIRM & FINISH")}
+    TextButton(onClick={step=0},enabled=!saving){Text("BACK")}
+   }
+   else->{
+    val r=receipt!!
+    Card(Modifier.fillMaxWidth()){
+     Column(Modifier.padding(18.dp),verticalArrangement=Arrangement.spacedBy(7.dp)){
+      Text("✓ TRANSACTION COMPLETE",style=MaterialTheme.typography.headlineSmall);Text("HONEST MILK",style=MaterialTheme.typography.titleLarge)
+      Text("Receipt: "+r.ids.first().take(8).uppercase());Text("Employee: "+r.employee.name);Text("Employee ID: "+r.employee.identifier)
+      r.lines.forEach{Text(it.product.name+" — "+it.product.variant+" × "+it.quantity+" = ₹"+String.format("%.2f",it.product.price*it.quantity))}
+      HorizontalDivider();Text("Total bill: ₹"+String.format("%.2f",r.total),style=MaterialTheme.typography.titleMedium)
+      Text("Consumption till today");Text("Quantity: "+(r.previousQuantity+r.lines.sumOf{it.quantity}));Text("Bill value: ₹"+String.format("%.2f",r.previousValue+r.total))
+     }
+    }
+    Button(onClick={onShare(buildReceiptText(r))},modifier=Modifier.fillMaxWidth().height(56.dp)){Text("SHARE DIGITAL RECEIPT")}
+    Button(onClick={cart=emptyList();selectedProduct=null;selectedEmployee=null;quantity=1;search="";summary=null;receipt=null;error=null;step=0},modifier=Modifier.fillMaxWidth().height(56.dp)){Text("NEW TRANSACTION")}
+   }
   }
  }
 }
 
+data class CartLine(val product:Product,val quantity:Int)
 data class EmployeeSummary(val transactionCount:Int,val quantity:Int,val value:Double)
-data class SavedReceipt(val id:String,val employee:Employee,val product:Product,val quantity:Int,val total:Double,val previousQuantity:Int,val previousValue:Double,val transactionAt:String)
+data class SavedReceipt(val ids:List<String>,val employee:Employee,val lines:List<CartLine>,val total:Double,val previousQuantity:Int,val previousValue:Double,val transactionAt:String)
 
 fun buildReceiptText(r:SavedReceipt):String{
- return "HONEST MILK - DODLA EMPLOYEE STORE\n\nDigital Receipt\nReceipt: "+r.id+"\nDate: "+r.transactionAt+"\n\nEmployee: "+r.employee.name+"\nEmployee ID: "+r.employee.identifier+"\n\n"+r.product.name+" - "+r.product.variant+"\nQuantity: "+r.quantity+"\nUnit price: ₹"+String.format("%.2f",r.product.price)+"\nTotal bill: ₹"+String.format("%.2f",r.total)+"\n\nConsumption till today:\nQuantity: "+(r.previousQuantity+r.quantity)+"\nBill value: ₹"+String.format("%.2f",r.previousValue+r.total)
+ return buildString{
+  appendLine("HONEST MILK - DODLA EMPLOYEE STORE")
+  appendLine()
+  appendLine("Digital Receipt")
+  appendLine("Receipt: "+r.ids.joinToString(", "){it.take(8).uppercase()})
+  appendLine("Date: "+r.transactionAt)
+  appendLine()
+  appendLine("Employee: "+r.employee.name)
+  appendLine("Employee ID: "+r.employee.identifier)
+  appendLine()
+  r.lines.forEach{
+   appendLine(it.product.name+" - "+it.product.variant+" x "+it.quantity)
+   appendLine("Unit price: ₹"+String.format("%.2f",it.product.price))
+   appendLine("Line total: ₹"+String.format("%.2f",it.product.price*it.quantity))
+  }
+  appendLine()
+  appendLine("Total bill: ₹"+String.format("%.2f",r.total))
+  appendLine()
+  appendLine("Consumption till today:")
+  appendLine("Quantity: "+(r.previousQuantity+r.lines.sumOf{it.quantity}))
+  appendLine("Bill value: ₹"+String.format("%.2f",r.previousValue+r.total))
+ }
 }
