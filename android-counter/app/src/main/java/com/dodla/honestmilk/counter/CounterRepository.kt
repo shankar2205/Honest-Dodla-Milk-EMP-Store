@@ -1,6 +1,8 @@
 package com.dodla.honestmilk.counter
 
 import android.content.Context
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.postgrest.query.Order
@@ -22,6 +24,13 @@ import java.util.UUID
 class CounterRepository(context: Context){
  private val supabase=SupabaseClientProvider.client
  private val offline=OfflineStore(context)
+ private val appContext=context.applicationContext
+ fun isOnline():Boolean {
+  val cm=appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+  val network=cm.activeNetwork ?: return false
+  val caps=cm.getNetworkCapabilities(network) ?: return false
+  return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+ }
 
  suspend fun sessionExists():Boolean=supabase.auth.currentUserOrNull()!=null
  suspend fun signIn(email:String,password:String){
@@ -103,12 +112,12 @@ class CounterRepository(context: Context){
   val inserts=lines.map{
    TransactionInsert(UUID.randomUUID().toString(),employeeId,it.variantId,it.quantity,it.unitPrice,operatorId,now)
   }
-  return try{
-   supabase.from("transactions").insert(inserts){select()}.decodeList()
-  }catch(e:Exception){
-   offline.addPending(inserts.map{PendingTransaction(it.id,it.employee_id,it.product_variant_id,it.quantity,it.unit_price,it.operator_id,it.transaction_at?:now)})
-   inserts.map{SavedTransactionRow(it.id,now)}
+  if(isOnline()){
+   return supabase.from("transactions").insert(inserts){select()}.decodeList()
   }
+  offline.addPending(inserts.map{PendingTransaction(it.id,it.employee_id,it.product_variant_id,it.quantity,it.unit_price,it.operator_id,it.transaction_at?:now)})
+  return inserts.map{SavedTransactionRow(it.id,now)}
+
  }
 
  suspend fun syncPending():Int{
