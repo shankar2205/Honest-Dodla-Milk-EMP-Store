@@ -85,7 +85,7 @@ class MainActivity:ComponentActivity(){
     selectedProduct?.let{p->
      Text("Add: "+p.name+" — "+p.variant,style=MaterialTheme.typography.titleMedium)
      Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){Button(onClick={if(quantity>1)quantity--}){Text("−")};Text("  "+quantity+"  ",style=MaterialTheme.typography.titleLarge);Button(onClick={quantity++}){Text("+")}}
-     Button(onClick={addToCart},modifier=Modifier.fillMaxWidth().height(52.dp)){Text("ADD TO CART")}
+     Button(onClick={addToCart()},modifier=Modifier.fillMaxWidth().height(52.dp)){Text("ADD TO CART")}
     }
     if(cart.isNotEmpty()){
      HorizontalDivider()
