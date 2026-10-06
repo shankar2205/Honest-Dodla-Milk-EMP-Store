@@ -122,9 +122,15 @@ class CounterRepository(context: Context){
 
  suspend fun syncPending():Int{
   val pending=offline.pendingTransactions()
-  if(pending.isEmpty()||supabase.auth.currentUserOrNull()==null) return 0
+  if(pending.isEmpty()||supabase.auth.currentUserOrNull()==null||!isOnline()) return 0
+  val variants=runCatching{
+   supabase.from("product_variants").select{filter{eq("active",true)}}.decodeList<VariantRow>()
+  }.getOrElse{return 0}
+  val prices=variants.associateBy{it.id}
   val successful=mutableSetOf<String>()
-  pending.groupBy{it.operatorId}.values.flatten().forEach{p->
+  pending.forEach{p->
+   val current=prices[p.productVariantId]
+   if(current==null||kotlin.math.abs(current.price-p.unitPrice)>0.001) return@forEach
    try{
     supabase.from("transactions").insert(
      TransactionInsert(p.id,p.employeeId,p.productVariantId,p.quantity,p.unitPrice,p.operatorId,p.transactionAt)
