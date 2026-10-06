@@ -67,7 +67,7 @@ class MainActivity:ComponentActivity(){
  }
  fun cartTotal()=cart.sumOf{it.product.price*it.quantity}
 
- LaunchedEffect(Unit){runCatching{val ps=repo.products();val vs=repo.variants();products=vs.mapNotNull{v->ps.find{it.id==v.product_id}?.let{p->Product(v.id,p.name,v.variant_name,p.price,v.unit_volume_ml)}}}.onFailure{error=it.message?:"Unable to load counter data."};loading=false}
+ LaunchedEffect(Unit){runCatching{val ps=repo.products();val vs=repo.variants();products=vs.mapNotNull{v->ps.find{it.id==v.product_id}?.let{p->Product(v.id,p.name,v.variant_name,v.price,v.unit_volume_ml)}}}.onFailure{error=it.message?:"Unable to load counter data."};loading=false}
  LaunchedEffect(search,step){if(step==1)loadEmployees(search)}
 
  Column(Modifier.fillMaxSize().padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
