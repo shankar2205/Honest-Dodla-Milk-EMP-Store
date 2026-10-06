@@ -21,8 +21,8 @@ class CounterRepository{
  suspend fun sessionExists():Boolean=supabase.auth.currentUserOrNull()!=null
  suspend fun signIn(email:String,password:String){supabase.auth.signInWith(Email){this.email=email;this.password=password};val userId=supabase.auth.currentUserOrNull()?.id?:error("Login failed.");val profile=supabase.from("profiles").select{filter{eq("id",userId)}}.decodeSingle<ProfileRow>();if(!profile.active||(profile.role!="ADMIN"&&profile.role!="OPERATOR")){supabase.auth.signOut();error("Account is not active as Admin or Operator.")}}
  suspend fun signOut(){supabase.auth.signOut()}
- suspend fun products():List<ProductRow>=supabase.from("products").select{filter{eq("active",true)};order(column="name",order=Order.ASCENDING)}.decodeList()
- suspend fun variants():List<VariantRow>=supabase.from("product_variants").select{filter{eq("active",true)};order(column="variant_name",order=Order.ASCENDING)}.decodeList()
+ suspend fun products(): List<ProductRow> =supabase.from("products").select{filter{eq("active",true)};order(column="name",order=Order.ASCENDING)}.decodeList()
+ suspend fun variants(): List<VariantRow> =supabase.from("product_variants").select{filter{eq("active",true)};order(column="variant_name",order=Order.ASCENDING)}.decodeList()
  suspend fun employees(search:String=""):List<EmployeeRow>{
   val rows=supabase.from("employees").select{filter{eq("active",true)};order(column="name",order=Order.ASCENDING)}.decodeList<EmployeeRow>()
   if(search.isBlank()) return rows.take(15)
