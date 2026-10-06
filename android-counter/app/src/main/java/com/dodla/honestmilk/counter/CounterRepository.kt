@@ -13,6 +13,8 @@ import kotlinx.serialization.Serializable
 @Serializable data class TransactionInsert(val employee_id:String,val product_variant_id:String,val quantity:Int,val unit_price:Double,val operator_id:String)
 @Serializable data class TransactionHistoryRow(val quantity:Int,val unit_price:Double)
 @Serializable data class SavedTransactionRow(val id:String,val transaction_at:String)
+data class TransactionLine(val variantId:String,val quantity:Int,val unitPrice:Double)
+data class SavedTransactionBatch(val rows:List<SavedTransactionRow>)
 
 class CounterRepository{
  private val supabase=SupabaseClientProvider.client
@@ -23,5 +25,10 @@ class CounterRepository{
  suspend fun variants():List<VariantRow>=supabase.from("product_variants").select{filter{eq("active",true)};order(column="variant_name",order=Order.ASCENDING)}.decodeList()
  suspend fun employees(search:String=""):List<EmployeeRow>=supabase.from("employees").select{filter{eq("active",true);if(search.isNotBlank()){or{ilike("name","%$search%");ilike("employee_code","%$search%");ilike("guest_code","%$search%");ilike("phone","%$search%")}}};order(column="name",order=Order.ASCENDING);limit(15)}.decodeList()
  suspend fun summary(employeeId:String):EmployeeSummary{val rows=supabase.from("transactions").select{filter{eq("employee_id",employeeId)}}.decodeList<TransactionHistoryRow>();return EmployeeSummary(rows.size,rows.sumOf{it.quantity},rows.sumOf{it.quantity*it.unit_price})}
- suspend fun save(employeeId:String,variantId:String,quantity:Int,unitPrice:Double):SavedTransactionRow{val operatorId=supabase.auth.currentUserOrNull()?.id?:error("Operator session expired.");return supabase.from("transactions").insert(TransactionInsert(employeeId,variantId,quantity,unitPrice,operatorId)){select()}.decodeSingle()}
+ suspend fun save(employeeId:String,lines:List<TransactionLine>):List<SavedTransactionRow>{
+  require(lines.isNotEmpty()){"Add at least one product."}
+  val operatorId=supabase.auth.currentUserOrNull()?.id?:error("Operator session expired.")
+  val inserts=lines.map{TransactionInsert(employeeId,it.variantId,it.quantity,it.unitPrice,operatorId)}
+  return supabase.from("transactions").insert(inserts){select()}.decodeList()
+ }
 }
