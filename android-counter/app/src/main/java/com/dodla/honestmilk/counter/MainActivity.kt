@@ -13,6 +13,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -25,7 +26,8 @@ class MainActivity:ComponentActivity(){
 }
 
 @Composable fun CounterApp(onShare:(String)->Unit){
- val repo=remember{CounterRepository()}; val scope=rememberCoroutineScope()
+ val context=LocalContext.current.applicationContext
+ val repo=remember{CounterRepository(context)}; val scope=rememberCoroutineScope()
  var loggedIn by remember{mutableStateOf(false)}; var checking by remember{mutableStateOf(true)}; var loginError by remember{mutableStateOf<String?>(null)}
  LaunchedEffect(Unit){loggedIn=runCatching{repo.sessionExists()}.getOrDefault(false);checking=false}
  if(checking) Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){CircularProgressIndicator()}
@@ -57,6 +59,8 @@ class MainActivity:ComponentActivity(){
  var saving by remember{mutableStateOf(false)}
  var summary by remember{mutableStateOf<EmployeeSummary?>(null)}
  var receipt by remember{mutableStateOf<SavedReceipt?>(null)}
+ var pendingCount by remember{mutableIntStateOf(0)}
+ var offlineMode by remember{mutableStateOf(false)}
 
  fun loadEmployees(q:String){scope.launch{runCatching{repo.employees(q)}.onSuccess{employees=it.map{r->Employee(r.id,r.name,r.department?:"",r.employee_code?:r.guest_code?:"GUEST",if(r.employee_code!=null)"EMPLOYEE" else "GUEST")}}.onFailure{error=it.message?:"Unable to load employees."}}}
  fun addToCart(){
@@ -67,12 +71,26 @@ class MainActivity:ComponentActivity(){
  }
  fun cartTotal()=cart.sumOf{it.product.price*it.quantity}
 
- LaunchedEffect(Unit){runCatching{val ps=repo.products();val vs=repo.variants();products=vs.mapNotNull{v->ps.find{it.id==v.product_id}?.let{p->Product(v.id,p.name,v.variant_name,v.price,v.unit_volume_ml)}}}.onFailure{error=it.message?:"Unable to load counter data."};loading=false}
+ LaunchedEffect(Unit){
+  offlineMode=!repo.isOnline()
+  runCatching{repo.syncPending()}.onFailure{}
+  pendingCount=repo.pendingCount()
+  runCatching{
+   val ps=repo.products()
+   val vs=repo.variants()
+   products=vs.mapNotNull{v->ps.find{it.id==v.product_id}?.let{p->Product(v.id,p.name,v.variant_name,v.price,v.unit_volume_ml)}}
+  }.onFailure{error=it.message?:"Unable to load counter data."}
+  offlineMode=!repo.isOnline()
+  pendingCount=repo.pendingCount()
+  loading=false
+ }
  LaunchedEffect(search,step){if(step==1)loadEmployees(search)}
 
  Column(Modifier.fillMaxSize().padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
   Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){Text("HONEST MILK",style=MaterialTheme.typography.titleLarge);TextButton(onClick=onLogout){Text("LOG OUT")}}
   Text(when(step){0->"TAKE PRODUCTS";1->"SELECT EMPLOYEE";2->"CONFIRM";else->"DIGITAL RECEIPT"},style=MaterialTheme.typography.headlineMedium)
+  if(offlineMode) Text("OFFLINE MODE — cached counter data is being used.",color=MaterialTheme.colorScheme.error)
+  if(pendingCount>0) Text("Pending sync: $pendingCount transaction(s). They will sync when online.",style=MaterialTheme.typography.labelMedium)
   error?.let{Text(it,color=MaterialTheme.colorScheme.error)}
   when(step){
    0->{
@@ -123,7 +141,13 @@ class MainActivity:ComponentActivity(){
      saving=true;error=null
      scope.launch{
       runCatching{repo.save(e.id,cart.map{TransactionLine(it.product.id,it.quantity,it.product.price)})}
-       .onSuccess{saved->receipt=SavedReceipt(saved.map{it.id},e,cart,cartTotal(),s?.quantity?:0,s?.value?:0.0,saved.firstOrNull()?.transaction_at?:"");step=3}
+       .onSuccess{saved->
+        val wasOffline=!repo.isOnline()
+        receipt=SavedReceipt(saved.map{it.id},e,cart,cartTotal(),s?.quantity?:0,s?.value?:0.0,saved.firstOrNull()?.transaction_at?:"",wasOffline)
+        pendingCount=repo.pendingCount()
+        offlineMode=wasOffline
+        step=3
+       }
        .onFailure{error=it.message?:"Unable to save transaction."}
       saving=false
      }
@@ -135,7 +159,7 @@ class MainActivity:ComponentActivity(){
     Card(Modifier.fillMaxWidth()){
      Column(Modifier.padding(18.dp),verticalArrangement=Arrangement.spacedBy(7.dp)){
       Text("✓ TRANSACTION COMPLETE",style=MaterialTheme.typography.headlineSmall);Text("HONEST MILK",style=MaterialTheme.typography.titleLarge)
-      Text("Receipt: "+r.ids.first().take(8).uppercase());Text("Employee: "+r.employee.name);Text("Employee ID: "+r.employee.identifier)
+      Text("Receipt: "+r.ids.first().take(8).uppercase());if(r.pending)Text("Status: PENDING SYNC",color=MaterialTheme.colorScheme.error);Text("Employee: "+r.employee.name);Text("Employee ID: "+r.employee.identifier)
       r.lines.forEach{Text(it.product.name+" — "+it.product.variant+" × "+it.quantity+" = ₹"+String.format("%.2f",it.product.price*it.quantity))}
       HorizontalDivider();Text("Total bill: ₹"+String.format("%.2f",r.total),style=MaterialTheme.typography.titleMedium)
       Text("Consumption till today");Text("Quantity: "+(r.previousQuantity+r.lines.sumOf{it.quantity}));Text("Bill value: ₹"+String.format("%.2f",r.previousValue+r.total))
@@ -149,8 +173,7 @@ class MainActivity:ComponentActivity(){
 }
 
 data class CartLine(val product:Product,val quantity:Int)
-data class EmployeeSummary(val transactionCount:Int,val quantity:Int,val value:Double)
-data class SavedReceipt(val ids:List<String>,val employee:Employee,val lines:List<CartLine>,val total:Double,val previousQuantity:Int,val previousValue:Double,val transactionAt:String)
+data class SavedReceipt(val ids:List<String>,val employee:Employee,val lines:List<CartLine>,val total:Double,val previousQuantity:Int,val previousValue:Double,val transactionAt:String,val pending:Boolean)
 
 fun buildReceiptText(r:SavedReceipt):String{
  return buildString{
