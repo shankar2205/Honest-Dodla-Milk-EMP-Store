@@ -167,16 +167,52 @@ class MainActivity:ComponentActivity(){
   onDispose{lifecycleOwner.lifecycle.removeObserver(observer)}
  }
 
- Column((if(step==0) Modifier.fillMaxSize().padding(20.dp).verticalScroll(productScrollState) else Modifier.fillMaxSize().padding(20.dp)),verticalArrangement=Arrangement.spacedBy(12.dp)){
-  Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){Text("HONEST MILK",style=MaterialTheme.typography.titleLarge);TextButton(onClick=onLogout){Text("LOG OUT")}}
+ Column((if(step==0) Modifier.fillMaxSize().padding(horizontal=16.dp,vertical=14.dp).verticalScroll(productScrollState) else Modifier.fillMaxSize().padding(horizontal=16.dp,vertical=14.dp)),verticalArrangement=Arrangement.spacedBy(12.dp)){
+  Card(Modifier.fillMaxWidth(),elevation=CardDefaults.cardElevation(defaultElevation=2.dp)){
+   Row(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=12.dp),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
+    Column(verticalArrangement=Arrangement.spacedBy(2.dp)){
+     Text("HONEST MILK",style=MaterialTheme.typography.titleLarge)
+     Text("DODLA EMPLOYEE STORE",style=MaterialTheme.typography.labelMedium)
+    }
+    TextButton(onClick=onLogout){Text("LOG OUT")}
+   }
+  }
   if(step==0){
-   Text(greeting+"!",style=MaterialTheme.typography.headlineSmall)
-   Text(currentDateTime,style=MaterialTheme.typography.bodyMedium)
+   Card(Modifier.fillMaxWidth()){
+    Column(Modifier.fillMaxWidth().padding(14.dp),verticalArrangement=Arrangement.spacedBy(2.dp)){
+     Text(greeting+"!",style=MaterialTheme.typography.headlineSmall)
+     Text(currentDateTime,style=MaterialTheme.typography.bodyMedium)
+    }
+   }
+  }
+  Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+   listOf("1 PRODUCTS","2 PERSON","3 REVIEW","4 RECEIPT").forEachIndexed{i,label->
+    val active=i==step
+    Surface(
+     modifier=Modifier.weight(1f),
+     shape=MaterialTheme.shapes.small,
+     color=if(active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+    ){
+     Text(label,style=MaterialTheme.typography.labelMedium,modifier=Modifier.padding(vertical=8.dp,horizontal=4.dp),textAlign=androidx.compose.ui.text.style.TextAlign.Center)
+    }
+   }
   }
   Text(when(step){0->"TAKE PRODUCTS";1->"SELECT EMPLOYEE";2->"CONFIRM";else->"DIGITAL RECEIPT"},style=MaterialTheme.typography.headlineMedium)
-  if(offlineMode) Text("OFFLINE MODE — cached counter data is being used.",color=MaterialTheme.colorScheme.error)
-  if(pendingCount>0) Text("Pending sync: $pendingCount transaction(s). They will sync when online.",style=MaterialTheme.typography.labelMedium)
-  error?.let{Text(it,color=MaterialTheme.colorScheme.error)}
+  if(offlineMode){
+   Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.small,color=MaterialTheme.colorScheme.errorContainer){
+    Text("OFFLINE MODE — cached counter data is being used.",modifier=Modifier.padding(10.dp),color=MaterialTheme.colorScheme.onErrorContainer)
+   }
+  }
+  if(pendingCount>0){
+   Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.small,color=MaterialTheme.colorScheme.secondaryContainer){
+    Text("Pending sync: $pendingCount transaction(s). They will sync when online.",modifier=Modifier.padding(10.dp),style=MaterialTheme.typography.labelMedium)
+   }
+  }
+  error?.let{
+   Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.small,color=MaterialTheme.colorScheme.errorContainer){
+    Text(it,modifier=Modifier.padding(10.dp),color=MaterialTheme.colorScheme.onErrorContainer)
+   }
+  }
   when(step){
    0->{
     Text("PRODUCT CATALOGUE",style=MaterialTheme.typography.titleLarge)
