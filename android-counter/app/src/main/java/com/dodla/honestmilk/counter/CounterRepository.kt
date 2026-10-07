@@ -112,11 +112,19 @@ class CounterRepository(context: Context){
   val inserts=lines.map{
    TransactionInsert(UUID.randomUUID().toString(),employeeId,it.variantId,it.quantity,it.unitPrice,operatorId,now)
   }
+  val pending = inserts.map{PendingTransaction(it.id,it.employee_id,it.product_variant_id,it.quantity,it.unit_price,it.operator_id,it.transaction_at?:now)}
   if(isOnline()){
-   return supabase.from("transactions").insert(inserts){select()}.decodeList()
+   return runCatching {
+    supabase.from("transactions").insert(inserts){select()}.decodeList()
+   }.getOrElse {
+    // The request may have reached the server even if the client lost the response.
+    // Queue the same stable IDs so sync can safely reconcile the result.
+    offline.addPending(pending)
+    pending.map{SavedTransactionRow(it.id,it.transactionAt)}
+   }
   }
-  offline.addPending(inserts.map{PendingTransaction(it.id,it.employee_id,it.product_variant_id,it.quantity,it.unit_price,it.operator_id,it.transaction_at?:now)})
-  return inserts.map{SavedTransactionRow(it.id,now)}
+  offline.addPending(pending)
+  return pending.map{SavedTransactionRow(it.id,it.transactionAt)}
 
  }
 
@@ -136,7 +144,14 @@ class CounterRepository(context: Context){
      TransactionInsert(p.id,p.employeeId,p.productVariantId,p.quantity,p.unitPrice,p.operatorId,p.transactionAt)
     )
     successful.add(p.id)
-   }catch(_:Exception){}
+   }catch(_:Exception){
+    // A timeout can happen after the database commit. Check the stable ID before
+    // leaving the item pending; this prevents duplicate retries and stuck receipts.
+    val existing=runCatching{
+     supabase.from("transactions").select{filter{eq("id",p.id)}}.decodeList<SavedTransactionRow>()
+    }.getOrDefault(emptyList())
+    if(existing.any{it.id==p.id}) successful.add(p.id)
+   }
   }
   offline.removePending(successful)
   return successful.size
