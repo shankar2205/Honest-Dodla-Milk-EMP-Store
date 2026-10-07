@@ -23,6 +23,10 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 data class Product(val id:String,val name:String,val variant:String,val price:Double,val volumeMl:Int)
 data class Employee(val id:String,val name:String,val department:String,val identifier:String,val type:String)
@@ -65,6 +69,10 @@ class MainActivity:ComponentActivity(){
 }
 
 @Composable fun CounterFlow(repo:CounterRepository,scope:CoroutineScope,onShare:(String)->Unit,onLogout:()->Unit){
+ val now=remember{mutableStateOf(Instant.now())}
+ LaunchedEffect(Unit){while(isActive){now.value=Instant.now();delay(30_000)}}
+ val currentDateTime=formatLocalDateTime(now.value.toString())
+ val greeting=greetingForHour(now.value.atZone(ZoneId.systemDefault()).hour)
  var step by remember{mutableIntStateOf(0)}
  var products by remember{mutableStateOf<List<Product>>(emptyList())}
  var employees by remember{mutableStateOf<List<Employee>>(emptyList())}
@@ -143,6 +151,10 @@ class MainActivity:ComponentActivity(){
 
  Column((if(step==0) Modifier.fillMaxSize().padding(20.dp).verticalScroll(productScrollState) else Modifier.fillMaxSize().padding(20.dp)),verticalArrangement=Arrangement.spacedBy(12.dp)){
   Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){Text("HONEST MILK",style=MaterialTheme.typography.titleLarge);TextButton(onClick=onLogout){Text("LOG OUT")}}
+  if(step==0){
+   Text(greeting+"!",style=MaterialTheme.typography.headlineSmall)
+   Text(currentDateTime,style=MaterialTheme.typography.bodyMedium)
+  }
   Text(when(step){0->"TAKE PRODUCTS";1->"SELECT EMPLOYEE";2->"CONFIRM";else->"DIGITAL RECEIPT"},style=MaterialTheme.typography.headlineMedium)
   if(offlineMode) Text("OFFLINE MODE — cached counter data is being used.",color=MaterialTheme.colorScheme.error)
   if(pendingCount>0) Text("Pending sync: $pendingCount transaction(s). They will sync when online.",style=MaterialTheme.typography.labelMedium)
@@ -233,7 +245,11 @@ class MainActivity:ComponentActivity(){
     Card(Modifier.fillMaxWidth()){
      Column(Modifier.padding(18.dp),verticalArrangement=Arrangement.spacedBy(7.dp)){
       Text("✓ TRANSACTION COMPLETE",style=MaterialTheme.typography.headlineSmall);Text("HONEST MILK",style=MaterialTheme.typography.titleLarge)
-      Text("Receipt: "+r.ids.first().take(8).uppercase());if(r.pending)Text("Status: PENDING SYNC",color=MaterialTheme.colorScheme.error);Text("Employee: "+r.employee.name);Text("Employee ID: "+r.employee.identifier)
+      if(r.pending)Text("Status: PENDING SYNC",color=MaterialTheme.colorScheme.error)
+      Text("Day: "+formatReceiptDay(r.transactionAt))
+      Text("Date: "+formatReceiptDate(r.transactionAt))
+      Text("Time: "+formatReceiptTime(r.transactionAt))
+      Text("Employee: "+r.employee.name);Text("Employee ID: "+r.employee.identifier)
       r.lines.forEach{Text(it.product.name+" — "+it.product.variant+" × "+it.quantity+" = ₹"+String.format("%.2f",it.product.price*it.quantity))}
       HorizontalDivider();Text("Total bill: ₹"+String.format("%.2f",r.total),style=MaterialTheme.typography.titleMedium)
       Text("Consumption till today");Text("Quantity: "+(r.previousQuantity+r.lines.sumOf{it.quantity}));Text("Bill value: ₹"+String.format("%.2f",r.previousValue+r.total))
@@ -254,8 +270,9 @@ fun buildReceiptText(r:SavedReceipt):String{
   appendLine("HONEST MILK - DODLA EMPLOYEE STORE")
   appendLine()
   appendLine("Digital Receipt")
-  appendLine("Receipt: "+r.ids.joinToString(", "){it.take(8).uppercase()})
-  appendLine("Date: "+r.transactionAt)
+  appendLine("Day: "+formatReceiptDay(r.transactionAt))
+  appendLine("Date: "+formatReceiptDate(r.transactionAt))
+  appendLine("Time: "+formatReceiptTime(r.transactionAt))
   appendLine()
   appendLine("Employee: "+r.employee.name)
   appendLine("Employee ID: "+r.employee.identifier)
@@ -275,6 +292,11 @@ fun buildReceiptText(r:SavedReceipt):String{
 }
 
 
-fun equalsVariantDisplay(employeeName:String,variantName:String):String{
- return variantName
-}
+fun formatLocalDateTime(instantText:String):String = runCatching {
+ val z=Instant.parse(instantText).atZone(ZoneId.systemDefault())
+ z.format(DateTimeFormatter.ofPattern("EEEE, dd MMMM yyyy · hh:mm a",Locale.getDefault()))
+}.getOrDefault(instantText)
+fun formatReceiptDay(instantText:String):String = runCatching { Instant.parse(instantText).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("EEEE",Locale.getDefault())) }.getOrDefault("—")
+fun formatReceiptDate(instantText:String):String = runCatching { Instant.parse(instantText).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("dd MMMM yyyy",Locale.getDefault())) }.getOrDefault("—")
+fun formatReceiptTime(instantText:String):String = runCatching { Instant.parse(instantText).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("hh:mm:ss a",Locale.getDefault())) }.getOrDefault("—")
+fun greetingForHour(hour:Int):String = when(hour){in 5..11->"Good Morning";in 12..16->"Good Afternoon";in 17..20->"Good Evening";else->"Good Night"}
