@@ -2,7 +2,9 @@ package com.dodla.honestmilk.counter
 
 import android.content.Intent
 import android.os.Bundle
-import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
@@ -100,6 +102,26 @@ class MainActivity:ComponentActivity(){
     offlineMode=true
    }
   }
+ }
+
+ val lifecycleOwner=LocalLifecycleOwner.current
+ DisposableEffect(lifecycleOwner){
+  val observer=LifecycleEventObserver{_,event->
+   if(event==Lifecycle.Event.ON_START){
+    scope.launch{
+     if(repo.isOnline()){
+      runCatching{repo.syncPending()}.onSuccess{
+       pendingCount=repo.pendingCount()
+       offlineMode=false
+      }
+     } else {
+      offlineMode=true
+     }
+    }
+   }
+  }
+  lifecycleOwner.lifecycle.addObserver(observer)
+  onDispose{lifecycleOwner.lifecycle.removeObserver(observer)}
  }
 
  Column(Modifier.fillMaxSize().padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
