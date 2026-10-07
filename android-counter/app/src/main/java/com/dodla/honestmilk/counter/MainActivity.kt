@@ -467,21 +467,85 @@ class MainActivity:ComponentActivity(){
    }
    else->{
     val r=receipt!!
-    Card(Modifier.fillMaxWidth()){
-     Column(Modifier.padding(18.dp),verticalArrangement=Arrangement.spacedBy(7.dp)){
-      Text("✓ TRANSACTION COMPLETE",style=MaterialTheme.typography.headlineSmall);Text("HONEST MILK",style=MaterialTheme.typography.titleLarge)
-      if(r.pending)Text("Status: PENDING SYNC",color=MaterialTheme.colorScheme.error)
-      Text("Day: "+formatReceiptDay(r.transactionAt))
-      Text("Date: "+formatReceiptDate(r.transactionAt))
-      Text("Time: "+formatReceiptTime(r.transactionAt))
-      Text("Employee: "+r.employee.name);Text("Employee ID: "+r.employee.identifier)
-      r.lines.forEach{Text(it.product.name+" — "+it.product.variant+" × "+it.quantity+" = ₹"+String.format("%.2f",it.product.price*it.quantity))}
-      HorizontalDivider();Text("Total bill: ₹"+String.format("%.2f",r.total),style=MaterialTheme.typography.titleMedium)
-      Text("Consumption till today");Text("Quantity: "+(r.previousQuantity+r.lines.sumOf{it.quantity}));Text("Bill value: ₹"+String.format("%.2f",r.previousValue+r.total))
+    Column(verticalArrangement=Arrangement.spacedBy(12.dp)){
+     Card(
+      Modifier.fillMaxWidth(),
+      colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.primaryContainer),
+      elevation=CardDefaults.cardElevation(defaultElevation=4.dp)
+     ){
+      Column(
+       Modifier.fillMaxWidth().padding(22.dp),
+       horizontalAlignment=Alignment.CenterHorizontally,
+       verticalArrangement=Arrangement.spacedBy(6.dp)
+      ){
+       Text("✓",style=MaterialTheme.typography.displaySmall)
+       Text("TRANSACTION COMPLETE",style=MaterialTheme.typography.headlineSmall,textAlign=androidx.compose.ui.text.style.TextAlign.Center)
+       Text("HONEST MILK",style=MaterialTheme.typography.titleMedium)
+       if(r.pending){
+        Text("PENDING SYNC",style=MaterialTheme.typography.labelLarge,color=MaterialTheme.colorScheme.error)
+       } else {
+        Text("Saved successfully",style=MaterialTheme.typography.bodyMedium)
+       }
+      }
+     }
+
+     Card(Modifier.fillMaxWidth(),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
+      Column(Modifier.fillMaxWidth().padding(18.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
+       Text("RECEIPT",style=MaterialTheme.typography.labelLarge)
+       Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){
+        Column{Text(formatReceiptDay(r.transactionAt),style=MaterialTheme.typography.titleMedium);Text("Day",style=MaterialTheme.typography.labelMedium)}
+        Column(horizontalAlignment=Alignment.End){Text(formatReceiptTime(r.transactionAt),style=MaterialTheme.typography.titleMedium);Text(formatReceiptDate(r.transactionAt),style=MaterialTheme.typography.labelMedium)}
+       }
+       HorizontalDivider()
+       Text(r.employee.name,style=MaterialTheme.typography.headlineSmall)
+       Text(r.employee.identifier,style=MaterialTheme.typography.titleMedium)
+       if(r.employee.department.isNotBlank())Text(r.employee.department,style=MaterialTheme.typography.bodyMedium)
+       Text(r.employee.type,style=MaterialTheme.typography.labelMedium)
+      }
+     }
+
+     Card(Modifier.fillMaxWidth(),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
+      Column(Modifier.fillMaxWidth().padding(18.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
+       Text("ITEMS",style=MaterialTheme.typography.labelLarge)
+       r.lines.forEach{line->
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.Top){
+         Column(Modifier.weight(1f)){
+          Text(line.product.name,style=MaterialTheme.typography.titleMedium)
+          Text(line.product.variant+" × "+line.quantity,style=MaterialTheme.typography.bodyMedium)
+          Text("₹"+String.format("%.2f",line.product.price)+" each",style=MaterialTheme.typography.labelMedium)
+         }
+         Text("₹"+String.format("%.2f",line.product.price*line.quantity),style=MaterialTheme.typography.titleMedium)
+        }
+       }
+       HorizontalDivider()
+       Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
+        Text("TOTAL",style=MaterialTheme.typography.titleMedium)
+        Text("₹"+String.format("%.2f",r.total),style=MaterialTheme.typography.headlineMedium)
+       }
+      }
+     }
+
+     Card(Modifier.fillMaxWidth(),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
+      Column(Modifier.fillMaxWidth().padding(18.dp),verticalArrangement=Arrangement.spacedBy(7.dp)){
+       Text("CONSUMPTION TILL TODAY",style=MaterialTheme.typography.labelLarge)
+       Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){
+        Text("Total quantity")
+        Text((r.previousQuantity+r.lines.sumOf{it.quantity}).toString()+" units",style=MaterialTheme.typography.titleMedium)
+       }
+       Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){
+        Text("Total bill value")
+        Text("₹"+String.format("%.2f",r.previousValue+r.total),style=MaterialTheme.typography.titleMedium)
+       }
+      }
+     }
+
+     Button(onClick={onShare(buildReceiptText(r))},modifier=Modifier.fillMaxWidth().height(60.dp)){
+      Text("SHARE DIGITAL RECEIPT",style=MaterialTheme.typography.titleMedium)
+     }
+     Button(onClick={cart=emptyList();selectedProduct=null;selectedEmployee=null;quantity=1;productQuantities=emptyMap();search="";summary=null;receipt=null;error=null;step=0},modifier=Modifier.fillMaxWidth().height(60.dp)){
+      Text("NEW TRANSACTION",style=MaterialTheme.typography.titleMedium)
      }
     }
-    Button(onClick={onShare(buildReceiptText(r))},modifier=Modifier.fillMaxWidth().height(56.dp)){Text("SHARE DIGITAL RECEIPT")}
-    Button(onClick={cart=emptyList();selectedProduct=null;selectedEmployee=null;quantity=1;productQuantities=emptyMap();search="";summary=null;receipt=null;error=null;step=0},modifier=Modifier.fillMaxWidth().height(56.dp)){Text("NEW TRANSACTION")}
    }
   }
  }
