@@ -389,21 +389,65 @@ class MainActivity:ComponentActivity(){
    }
    2->{
     val e=selectedEmployee!!;val s=summary
-    Text("EMPLOYEE",style=MaterialTheme.typography.labelLarge);Text(e.name,style=MaterialTheme.typography.titleLarge);Text(e.identifier+" · "+e.department);Text(e.type,style=MaterialTheme.typography.labelMedium)
-    HorizontalDivider();Text("CURRENT TRANSACTION",style=MaterialTheme.typography.labelLarge)
-    cart.forEach{line->Text(line.product.name+" — "+line.product.variant+" × "+line.quantity);Text("₹"+String.format("%.2f",line.product.price)+" each · ₹"+String.format("%.2f",line.product.price*line.quantity))}
-    Text("Transaction total ₹"+String.format("%.2f",cartTotal()),style=MaterialTheme.typography.titleLarge)
-    HorizontalDivider();Text("CONSUMPTION TILL TODAY",style=MaterialTheme.typography.labelLarge)
-    if(s==null && !repo.isOnline()){
-     Text("Previous consumption history is unavailable offline.",style=MaterialTheme.typography.bodyMedium)
-    } else {
-     Text("Previous transactions: "+(s?.transactionCount?:0));Text("Previous quantity: "+(s?.quantity?:0));Text("Previous bill value: ₹"+String.format("%.2f",s?.value?:0.0))
+    Text("REVIEW & CONFIRM",style=MaterialTheme.typography.titleLarge)
+    Text("Please check the person and products before saving.",style=MaterialTheme.typography.bodyMedium)
+
+    Card(Modifier.fillMaxWidth(),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
+     Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
+      Text("TAKING PRODUCTS",style=MaterialTheme.typography.labelLarge)
+      Text(e.name,style=MaterialTheme.typography.headlineSmall)
+      Text(e.identifier,style=MaterialTheme.typography.titleMedium)
+      if(e.department.isNotBlank())Text(e.department,style=MaterialTheme.typography.bodyMedium)
+      Text(e.type,style=MaterialTheme.typography.labelMedium)
+     }
     }
-    if((s?.variants?:emptyList()).isNotEmpty()){
-     Text("Variant-wise quantity:",style=MaterialTheme.typography.labelMedium)
-     s?.variants?.forEach{v->Text(v.variantName+" : "+v.quantity+" till today")}
+
+    Card(Modifier.fillMaxWidth(),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
+     Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
+      Text("CURRENT TRANSACTION",style=MaterialTheme.typography.labelLarge)
+      cart.forEach{line->
+       Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
+        Column(Modifier.weight(1f)){
+         Text(line.product.name,style=MaterialTheme.typography.titleMedium)
+         Text(line.product.variant+" × "+line.quantity,style=MaterialTheme.typography.bodyMedium)
+        }
+        Text("₹"+String.format("%.2f",line.product.price*line.quantity),style=MaterialTheme.typography.titleMedium)
+       }
+      }
+      HorizontalDivider()
+      Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){
+       Text("TOTAL",style=MaterialTheme.typography.titleMedium)
+       Text("₹"+String.format("%.2f",cartTotal()),style=MaterialTheme.typography.headlineSmall)
+      }
+     }
     }
-    Text("After this: "+((s?.quantity?:0)+cart.sumOf{it.quantity})+" units · ₹"+String.format("%.2f",(s?.value?:0.0)+cartTotal()))
+
+    Card(Modifier.fillMaxWidth(),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
+     Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
+      Text("CONSUMPTION TILL TODAY",style=MaterialTheme.typography.labelLarge)
+      if(s==null && !repo.isOnline()){
+       Text("Previous consumption history is unavailable offline.",style=MaterialTheme.typography.bodyMedium)
+      } else {
+       Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text("Previous transactions");Text((s?.transactionCount?:0).toString())}
+       Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text("Previous quantity");Text((s?.quantity?:0).toString())}
+       Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text("Previous bill value");Text("₹"+String.format("%.2f",s?.value?:0.0))}
+      }
+      if((s?.variants?:emptyList()).isNotEmpty()){
+       HorizontalDivider()
+       Text("Variant-wise quantity",style=MaterialTheme.typography.labelMedium)
+       s?.variants?.forEach{v->
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){
+         Text(v.variantName)
+         Text(v.quantity+" till today")
+        }
+       }
+      }
+      HorizontalDivider()
+      Text("After this transaction",style=MaterialTheme.typography.labelMedium)
+      Text(((s?.quantity?:0)+cart.sumOf{it.quantity})+" units · ₹"+String.format("%.2f",(s?.value?:0.0)+cartTotal()),style=MaterialTheme.typography.titleMedium)
+     }
+    }
+
     Button(enabled=!saving,onClick={
      saving=true;error=null
      scope.launch{
