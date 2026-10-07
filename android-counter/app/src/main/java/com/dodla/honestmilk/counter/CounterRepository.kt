@@ -20,6 +20,7 @@ import java.util.UUID
 @Serializable data class TransactionLine(val variantId:String,val quantity:Int,val unitPrice:Double)
 @Serializable data class SavedTransactionBatch(val rows:List<SavedTransactionRow>)
 @Serializable data class EmployeeVariantSummary(val variantId:String,val variantName:String,val quantity:Int,val value:Double)
+@Serializable data class GuestEmployeeCreateParams(val pName:String,val pPhone:String?=null,val pDepartment:String?=null)
 @Serializable data class EmployeeSummary(val transactionCount:Int,val quantity:Int,val value:Double,val variants:List<EmployeeVariantSummary> = emptyList())
 
 class CounterRepository(context: Context){
@@ -66,6 +67,18 @@ class CounterRepository(context: Context){
    if(cached.isEmpty()) throw it
    cached
   }
+ }
+
+ suspend fun createGuestEmployee(name:String,phone:String,department:String):EmployeeRow{
+  require(name.trim().isNotBlank()){"Guest name is required."}
+  return supabase.postgrest.rpc(
+   "create_guest_employee",
+   GuestEmployeeCreateParams(
+    pName=name.trim(),
+    pPhone=phone.trim().ifBlank{null},
+    pDepartment=department.trim().ifBlank{null}
+   )
+  ).decodeSingle<EmployeeRow>()
  }
 
  suspend fun employees(search:String=""):List<EmployeeRow>{
