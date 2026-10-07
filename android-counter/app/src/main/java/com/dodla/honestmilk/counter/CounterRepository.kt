@@ -7,7 +7,6 @@ import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
-import io.github.jan.supabase.postgrest.result.decodeSingle
 import io.github.jan.supabase.postgrest.from
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.buildJsonObject
@@ -44,7 +43,7 @@ class CounterRepository(context: Context){
  suspend fun signIn(email:String,password:String){
   supabase.auth.signInWith(Email){this.email=email;this.password=password}
   val userId=supabase.auth.currentUserOrNull()?.id?:error("Login failed.")
-  val profile=supabase.from("profiles").select{filter{eq("id",userId)}}.decodeSingle<ProfileRow>()
+  val profile=supabase.from("profiles").select{filter{eq("id",userId)}}.decodeList<ProfileRow>().firstOrNull() ?: error("Profile not found.")
   if(!profile.active||(profile.role!="ADMIN"&&profile.role!="OPERATOR")){supabase.auth.signOut();error("Account is not active as Admin or Operator.")}
  }
  suspend fun signOut(){supabase.auth.signOut()}
@@ -98,7 +97,7 @@ class CounterRepository(context: Context){
     put("p_phone",phone.trim().ifBlank{null})
     put("p_department",department.trim().ifBlank{null})
    }
-  ).decodeSingle<EmployeeRow>()
+  ).decodeList<EmployeeRow>().firstOrNull() ?: error("Unable to create employee.")
  }
 
  suspend fun employees(search:String=""):List<EmployeeRow>{
