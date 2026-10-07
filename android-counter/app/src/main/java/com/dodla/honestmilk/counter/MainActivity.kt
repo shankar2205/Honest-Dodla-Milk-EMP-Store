@@ -220,7 +220,7 @@ class MainActivity:ComponentActivity(){
     }
     if((s?.variants?:emptyList()).isNotEmpty()){
      Text("Variant-wise quantity:",style=MaterialTheme.typography.labelMedium)
-     s?.variants?.forEach{v->Text(equalsVariantDisplay(e.name,v.variantName)+" : "+v.quantity+" till today")}
+     s?.variants?.forEach{v->Text(v.variantName+" : "+v.quantity+" till today")}
     }
     Text("After this: "+((s?.quantity?:0)+cart.sumOf{it.quantity})+" units · ₹"+String.format("%.2f",(s?.value?:0.0)+cartTotal()))
     Button(enabled=!saving,onClick={
