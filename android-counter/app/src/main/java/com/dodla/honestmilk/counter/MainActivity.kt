@@ -167,6 +167,10 @@ class MainActivity:ComponentActivity(){
       }
      }
      Text("Cart total ₹"+String.format("%.2f",cartTotal()),style=MaterialTheme.typography.titleLarge)
+     OutlinedButton(
+      onClick={selectedProduct=null;quantity=1;error=null},
+      modifier=Modifier.fillMaxWidth().height(52.dp)
+     ){Text("+ ADD ANOTHER ITEM")}
      Button(onClick={step=1},modifier=Modifier.fillMaxWidth().height(56.dp)){Text("NEXT")}
     }
    }
