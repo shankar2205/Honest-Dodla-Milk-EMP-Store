@@ -8,6 +8,8 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
@@ -78,13 +80,15 @@ class MainActivity:ComponentActivity(){
  var receipt by remember{mutableStateOf<SavedReceipt?>(null)}
  var pendingCount by remember{mutableIntStateOf(0)}
  var offlineMode by remember{mutableStateOf(false)}
+ var addingAnotherItem by remember{mutableStateOf(false)}
+ val productScrollState=rememberScrollState()
 
  fun loadEmployees(q:String){scope.launch{runCatching{repo.employees(q)}.onSuccess{employees=it.map{r->Employee(r.id,r.name,r.department?:"",r.employee_code?:r.guest_code?:"GUEST",if(r.employee_code!=null)"EMPLOYEE" else "GUEST")}}.onFailure{error=it.message?:"Unable to load employees."}}}
  fun addToCart(){
   val p=selectedProduct?:return
   val existing=cart.firstOrNull{it.product.id==p.id}
   cart=if(existing==null) cart+CartLine(p,quantity) else cart.map{if(it.product.id==p.id)it.copy(quantity=it.quantity+quantity)else it}
-  selectedProduct=null;quantity=1
+  selectedProduct=null;quantity=1;addingAnotherItem=false
  }
  fun cartTotal()=cart.sumOf{it.product.price*it.quantity}
 
@@ -137,7 +141,7 @@ class MainActivity:ComponentActivity(){
   onDispose{lifecycleOwner.lifecycle.removeObserver(observer)}
  }
 
- Column(Modifier.fillMaxSize().padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
+ Column(Modifier.fillMaxSize().padding(20.dp).verticalScroll(productScrollState),verticalArrangement=Arrangement.spacedBy(12.dp)){
   Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){Text("HONEST MILK",style=MaterialTheme.typography.titleLarge);TextButton(onClick=onLogout){Text("LOG OUT")}}
   Text(when(step){0->"TAKE PRODUCTS";1->"SELECT EMPLOYEE";2->"CONFIRM";else->"DIGITAL RECEIPT"},style=MaterialTheme.typography.headlineMedium)
   if(offlineMode) Text("OFFLINE MODE — cached counter data is being used.",color=MaterialTheme.colorScheme.error)
@@ -145,6 +149,7 @@ class MainActivity:ComponentActivity(){
   error?.let{Text(it,color=MaterialTheme.colorScheme.error)}
   when(step){
    0->{
+    Text(if(addingAnotherItem)"SELECT ANOTHER ITEM" else "SELECT PRODUCTS",style=MaterialTheme.typography.titleLarge)
     if(loading)CircularProgressIndicator()
     products.forEach{p->
      OutlinedButton(onClick={selectedProduct=p;quantity=1;error=null},modifier=Modifier.fillMaxWidth().height(72.dp)){
@@ -168,7 +173,13 @@ class MainActivity:ComponentActivity(){
      }
      Text("Cart total ₹"+String.format("%.2f",cartTotal()),style=MaterialTheme.typography.titleLarge)
      OutlinedButton(
-      onClick={selectedProduct=null;quantity=1;error=null},
+      onClick={
+       selectedProduct=null
+       quantity=1
+       error=null
+       addingAnotherItem=true
+       scope.launch{productScrollState.animateScrollTo(0)}
+      },
       modifier=Modifier.fillMaxWidth().height(52.dp)
      ){Text("+ ADD ANOTHER ITEM")}
      Button(onClick={step=1},modifier=Modifier.fillMaxWidth().height(56.dp)){Text("NEXT")}
@@ -229,7 +240,7 @@ class MainActivity:ComponentActivity(){
      }
     }
     Button(onClick={onShare(buildReceiptText(r))},modifier=Modifier.fillMaxWidth().height(56.dp)){Text("SHARE DIGITAL RECEIPT")}
-    Button(onClick={cart=emptyList();selectedProduct=null;selectedEmployee=null;quantity=1;search="";summary=null;receipt=null;error=null;step=0},modifier=Modifier.fillMaxWidth().height(56.dp)){Text("NEW TRANSACTION")}
+    Button(onClick={cart=emptyList();selectedProduct=null;selectedEmployee=null;quantity=1;search="";summary=null;receipt=null;error=null;addingAnotherItem=false;step=0},modifier=Modifier.fillMaxWidth().height(56.dp)){Text("NEW TRANSACTION")}
    }
   }
  }
