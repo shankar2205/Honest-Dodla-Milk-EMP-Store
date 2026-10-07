@@ -11,14 +11,14 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -115,7 +115,6 @@ class MainActivity:ComponentActivity(){
  var newGuestDepartment by remember{mutableStateOf("")}
  var addingGuest by remember{mutableStateOf(false)}
  var productQuantities by remember{mutableStateOf<Map<String,Int>>(emptyMap())}
- val productScrollState=rememberScrollState()
 
  fun loadEmployees(q:String){scope.launch{runCatching{repo.employees(q)}.onSuccess{employees=it.map{r->Employee(r.id,r.name,r.department?:"",r.employee_code?:r.guest_code?:"GUEST",if(r.employee_code!=null)"EMPLOYEE" else "GUEST")}}.onFailure{error=it.message?:"Unable to load employees."}}}
  fun addSelectedProductsToCart(){
@@ -181,11 +180,11 @@ class MainActivity:ComponentActivity(){
   onDispose{lifecycleOwner.lifecycle.removeObserver(observer)}
  }
 
- Column((if(step==0) Modifier.fillMaxSize().padding(horizontal=16.dp,vertical=14.dp).verticalScroll(productScrollState) else Modifier.fillMaxSize().padding(horizontal=16.dp,vertical=14.dp)),verticalArrangement=Arrangement.spacedBy(12.dp)){
+ Column(Modifier.fillMaxSize().padding(horizontal=16.dp,vertical=14.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
   Card(Modifier.fillMaxWidth(),elevation=CardDefaults.cardElevation(defaultElevation=2.dp)){
    Row(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=12.dp),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
     Column(verticalArrangement=Arrangement.spacedBy(2.dp)){
-     Text("HONEST MILK",style=MaterialTheme.typography.titleLarge)
+     Text("HONEST MILK",style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.Serif,letterSpacing=1.5.sp))
      Text("DODLA EMPLOYEE STORE",style=MaterialTheme.typography.labelMedium)
     }
     TextButton(onClick=onLogout){Text("LOG OUT")}
@@ -211,7 +210,7 @@ class MainActivity:ComponentActivity(){
     }
    }
   }
-  Text(when(step){0->"TAKE PRODUCTS";1->"SELECT EMPLOYEE";2->"CONFIRM";else->"DIGITAL RECEIPT"},style=MaterialTheme.typography.headlineMedium)
+  Text(when(step){0->"TAKE PRODUCTS";1->"SELECT EMPLOYEE";2->"CONFIRM";else->"DIGITAL RECEIPT"},style=MaterialTheme.typography.headlineMedium.copy(fontFamily=FontFamily.Serif,letterSpacing=0.5.sp))
   if(offlineMode){
    Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.small,color=MaterialTheme.colorScheme.errorContainer){
     Text("OFFLINE MODE — cached counter data is being used.",modifier=Modifier.padding(10.dp),color=MaterialTheme.colorScheme.onErrorContainer)
@@ -227,9 +226,9 @@ class MainActivity:ComponentActivity(){
     Text(it,modifier=Modifier.padding(10.dp),color=MaterialTheme.colorScheme.onErrorContainer)
    }
   }
-  when(step){
-   0->{
-    Text("PRODUCT CATALOGUE",style=MaterialTheme.typography.titleLarge)
+  Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)){
+  when(step){   0->{
+    Text("PRODUCT CATALOGUE",style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.Serif,letterSpacing=0.8.sp))
     Text("Tap a product to add quickly. Adjust quantity with − / +.",style=MaterialTheme.typography.bodyMedium)
     if(loading)CircularProgressIndicator()
     BoxWithConstraints(Modifier.fillMaxWidth()){
@@ -319,15 +318,12 @@ class MainActivity:ComponentActivity(){
         Text("CART TOTAL",style=MaterialTheme.typography.titleMedium)
         Text("₹"+String.format("%.2f",cartTotal()),style=MaterialTheme.typography.headlineSmall)
        }
-       Button(onClick={step=1},modifier=Modifier.fillMaxWidth().height(60.dp)){
-        Text("NEXT — SELECT PERSON",style=MaterialTheme.typography.titleMedium)
-       }
       }
      }
     }
    }
    1->{
-    Text("WHO IS TAKING PRODUCTS?",style=MaterialTheme.typography.titleLarge)
+    Text("WHO IS TAKING PRODUCTS?",style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.Serif,letterSpacing=0.8.sp))
     Text("Find the employee or guest, then tap their name.",style=MaterialTheme.typography.bodyMedium)
 
     Card(Modifier.fillMaxWidth(),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
@@ -369,8 +365,8 @@ class MainActivity:ComponentActivity(){
 
     Text("Choose an existing person below, or register someone new.",style=MaterialTheme.typography.labelMedium)
 
-    LazyColumn(verticalArrangement=Arrangement.spacedBy(10.dp),modifier=Modifier.weight(1f,false)){
-     items(employees){e->
+    Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
+     employees.forEach{e->
       ElevatedCard(
        modifier=Modifier.fillMaxWidth().clickable{
         selectedEmployee=e
@@ -398,7 +394,6 @@ class MainActivity:ComponentActivity(){
       }
      }
     }
-    TextButton(onClick={step=0},modifier=Modifier.fillMaxWidth()){Text("BACK TO PRODUCTS")}
     if(showNewEmpRegister){
      AlertDialog(onDismissRequest={if(!registeringEmp)showNewEmpRegister=false},title={Text("NEW EMP REGISTER")},text={
       Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(10.dp)){
@@ -466,7 +461,7 @@ class MainActivity:ComponentActivity(){
    }
    2->{
     val e=selectedEmployee!!;val s=summary
-    Text("REVIEW & CONFIRM",style=MaterialTheme.typography.titleLarge)
+    Text("REVIEW & CONFIRM",style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.Serif,letterSpacing=0.8.sp))
     Text("Please check the person and products before saving.",style=MaterialTheme.typography.bodyMedium)
 
     Card(Modifier.fillMaxWidth(),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
@@ -624,6 +619,7 @@ class MainActivity:ComponentActivity(){
      }
     }
    }
+  }
   }
  }
 }
