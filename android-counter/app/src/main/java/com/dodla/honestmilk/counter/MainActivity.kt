@@ -438,13 +438,13 @@ class MainActivity:ComponentActivity(){
        s?.variants?.forEach{v->
         Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){
          Text(v.variantName)
-         Text(v.quantity+" till today")
+         Text(v.quantity.toString()+" till today")
         }
        }
       }
       HorizontalDivider()
       Text("After this transaction",style=MaterialTheme.typography.labelMedium)
-      Text(((s?.quantity?:0)+cart.sumOf{it.quantity})+" units · ₹"+String.format("%.2f",(s?.value?:0.0)+cartTotal()),style=MaterialTheme.typography.titleMedium)
+      Text(((s?.quantity?:0)+cart.sumOf{it.quantity}).toString()+" units · ₹"+String.format("%.2f",(s?.value?:0.0)+cartTotal()),style=MaterialTheme.typography.titleMedium)
      }
     }
 
