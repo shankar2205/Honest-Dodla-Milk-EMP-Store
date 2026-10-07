@@ -191,6 +191,10 @@ class MainActivity:ComponentActivity(){
     Text("Transaction total ₹"+String.format("%.2f",cartTotal()),style=MaterialTheme.typography.titleLarge)
     HorizontalDivider();Text("CONSUMPTION TILL TODAY",style=MaterialTheme.typography.labelLarge)
     Text("Previous transactions: "+(s?.transactionCount?:0));Text("Previous quantity: "+(s?.quantity?:0));Text("Previous bill value: ₹"+String.format("%.2f",s?.value?:0.0))
+    if((s?.variants?:emptyList()).isNotEmpty()){
+     Text("Variant-wise quantity:",style=MaterialTheme.typography.labelMedium)
+     s?.variants?.forEach{v->Text(equalsVariantDisplay(e.name,v.variantName)+" : "+v.quantity+" till today")}
+    }
     Text("After this: "+((s?.quantity?:0)+cart.sumOf{it.quantity})+" units · ₹"+String.format("%.2f",(s?.value?:0.0)+cartTotal()))
     Button(enabled=!saving,onClick={
      saving=true;error=null
@@ -253,4 +257,9 @@ fun buildReceiptText(r:SavedReceipt):String{
   appendLine("Quantity: "+(r.previousQuantity+r.lines.sumOf{it.quantity}))
   appendLine("Bill value: ₹"+String.format("%.2f",r.previousValue+r.total))
  }
+}
+
+
+fun equalsVariantDisplay(employeeName:String,variantName:String):String{
+ return variantName
 }
