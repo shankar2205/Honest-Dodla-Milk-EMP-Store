@@ -112,33 +112,34 @@ class MainActivity:ComponentActivity(){
   DairyBackground(Color(0xFF0D4050))
   Box(Modifier.fillMaxSize().background(Color.White.copy(alpha=0.18f)))
   Box(Modifier.fillMaxSize().padding(20.dp),contentAlignment=Alignment.Center){
-  Card(
-   Modifier.fillMaxWidth(),
-   colors=CardDefaults.cardColors(containerColor=Color(0xFFFFFBF2).copy(alpha=0.97f)),
-   elevation=CardDefaults.cardElevation(defaultElevation=12.dp),
-   shape=MaterialTheme.shapes.extraLarge
-  ){
-   Column(Modifier.fillMaxWidth().padding(24.dp),verticalArrangement=Arrangement.spacedBy(16.dp),horizontalAlignment=Alignment.CenterHorizontally){
-    Text("HONEST MILK",color=Color(0xFF12304A),style=MaterialTheme.typography.headlineLarge.copy(letterSpacing=2.sp,fontWeight=FontWeight.ExtraBold))
-    Text("DODLA EMPLOYEE STORE",color=Color(0xFFB66A00),style=MaterialTheme.typography.labelLarge.copy(letterSpacing=1.8.sp,fontWeight=FontWeight.Bold))
-    HorizontalDivider()
-    Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(4.dp)){
-     Text("COUNTER LOGIN",color=Color(0xFF12304A),style=MaterialTheme.typography.headlineSmall.copy(letterSpacing=1.2.sp,fontWeight=FontWeight.ExtraBold))
-     Text("Sign in to start serving employees and guests.",color=Color(0xFF41566B),style=MaterialTheme.typography.bodyMedium)
-    }
-    OutlinedTextField(email,{email=it},label={Text("Email")},placeholder={Text("Enter your email")},singleLine=true,enabled=!loading,modifier=Modifier.fillMaxWidth())
-    OutlinedTextField(password,{password=it},label={Text("Password")},placeholder={Text("Enter your password")},singleLine=true,enabled=!loading,visualTransformation=PasswordVisualTransformation(),modifier=Modifier.fillMaxWidth())
-    error?.let{
-     Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.small,color=MaterialTheme.colorScheme.errorContainer){
-      Text(it,modifier=Modifier.padding(10.dp),color=MaterialTheme.colorScheme.onErrorContainer)
+   Card(
+    Modifier.fillMaxWidth(),
+    colors=CardDefaults.cardColors(containerColor=Color(0xFFFFFBF2).copy(alpha=0.97f)),
+    elevation=CardDefaults.cardElevation(defaultElevation=12.dp),
+    shape=MaterialTheme.shapes.extraLarge
+   ){
+    Column(Modifier.fillMaxWidth().padding(24.dp),verticalArrangement=Arrangement.spacedBy(16.dp),horizontalAlignment=Alignment.CenterHorizontally){
+     Text("HONEST MILK",color=Color(0xFF12304A),style=MaterialTheme.typography.headlineLarge.copy(letterSpacing=2.sp,fontWeight=FontWeight.ExtraBold))
+     Text("DODLA EMPLOYEE STORE",color=Color(0xFFB66A00),style=MaterialTheme.typography.labelLarge.copy(letterSpacing=1.8.sp,fontWeight=FontWeight.Bold))
+     HorizontalDivider()
+     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(4.dp)){
+      Text("COUNTER LOGIN",color=Color(0xFF12304A),style=MaterialTheme.typography.headlineSmall.copy(letterSpacing=1.2.sp,fontWeight=FontWeight.ExtraBold))
+      Text("Sign in to start serving employees and guests.",color=Color(0xFF41566B),style=MaterialTheme.typography.bodyMedium)
      }
-    }
-    Button(onClick={onLogin(email.trim(),password)},enabled=!loading&&email.isNotBlank()&&password.isNotBlank(),modifier=Modifier.fillMaxWidth().height(60.dp)){
-     if(loading) CircularProgressIndicator(modifier=Modifier.size(22.dp),strokeWidth=2.dp) else Text("LOGIN",style=MaterialTheme.typography.titleMedium)
+     OutlinedTextField(email,{email=it},label={Text("Email")},placeholder={Text("Enter your email")},singleLine=true,enabled=!loading,modifier=Modifier.fillMaxWidth())
+     OutlinedTextField(password,{password=it},label={Text("Password")},placeholder={Text("Enter your password")},singleLine=true,enabled=!loading,visualTransformation=PasswordVisualTransformation(),modifier=Modifier.fillMaxWidth())
+     error?.let{
+      Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.small,color=MaterialTheme.colorScheme.errorContainer){
+       Text(it,modifier=Modifier.padding(10.dp),color=MaterialTheme.colorScheme.onErrorContainer)
+      }
+     }
+     Button(onClick={onLogin(email.trim(),password)},enabled=!loading&&email.isNotBlank()&&password.isNotBlank(),modifier=Modifier.fillMaxWidth().height(60.dp)){
+      if(loading) CircularProgressIndicator(modifier=Modifier.size(22.dp),strokeWidth=2.dp) else Text("LOGIN",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold,letterSpacing=1.sp))
+     }
     }
    }
   }
- } 
+ }
 }
 
 @Composable fun CounterFlow(repo:CounterRepository,scope:CoroutineScope,onShare:(String)->Unit,onLogout:()->Unit){
