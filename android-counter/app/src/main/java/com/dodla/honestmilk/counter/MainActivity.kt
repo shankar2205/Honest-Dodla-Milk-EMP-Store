@@ -9,6 +9,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -321,8 +322,7 @@ class MainActivity:ComponentActivity(){
          val q=productQuantities[p.id]?:0
          ElevatedCard(
           colors=CardDefaults.elevatedCardColors(containerColor=WhiteCard),
-          border=androidx.compose.foundation.BorderStroke(1.dp,if(q>0) Gold else Border),
-          modifier=Modifier.weight(1f).aspectRatio(1f).clickable{
+          modifier=Modifier.border(1.dp,if(q>0) Gold else Border,MaterialTheme.shapes.medium).weight(1f).aspectRatio(1f).clickable{
            productQuantities=productQuantities.toMutableMap().apply{put(p.id,(this[p.id]?:0)+1)}
           },
           elevation=CardDefaults.elevatedCardElevation(defaultElevation=6.dp)
@@ -428,8 +428,7 @@ class MainActivity:ComponentActivity(){
     Row(horizontalArrangement=Arrangement.spacedBy(12.dp),modifier=Modifier.fillMaxWidth()){
      ElevatedCard(
       colors=CardDefaults.elevatedCardColors(containerColor=WhiteCard),
-      border=androidx.compose.foundation.BorderStroke(1.dp,Teal.copy(alpha=0.45f)),
-      modifier=Modifier.weight(1f).height(92.dp).clickable{showNewEmpRegister=true;error=null},
+      modifier=Modifier.border(1.dp,Teal.copy(alpha=0.45f),MaterialTheme.shapes.medium).weight(1f).height(92.dp).clickable{showNewEmpRegister=true;error=null},
       elevation=CardDefaults.elevatedCardElevation(defaultElevation=4.dp)
      ){
       Column(Modifier.fillMaxSize().padding(12.dp),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally){
@@ -439,8 +438,7 @@ class MainActivity:ComponentActivity(){
      }
      ElevatedCard(
       colors=CardDefaults.elevatedCardColors(containerColor=WhiteCard),
-      border=androidx.compose.foundation.BorderStroke(1.dp,Teal.copy(alpha=0.45f)),
-      modifier=Modifier.weight(1f).height(92.dp).clickable{showAddEmployee=true;error=null},
+      modifier=Modifier.border(1.dp,Teal.copy(alpha=0.45f),MaterialTheme.shapes.medium).weight(1f).height(92.dp).clickable{showAddEmployee=true;error=null},
       elevation=CardDefaults.elevatedCardElevation(defaultElevation=4.dp)
      ){
       Column(Modifier.fillMaxSize().padding(12.dp),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally){
@@ -456,8 +454,7 @@ class MainActivity:ComponentActivity(){
      employees.forEach{e->
       ElevatedCard(
        colors=CardDefaults.elevatedCardColors(containerColor=Cream),
-       border=androidx.compose.foundation.BorderStroke(1.dp,Border),
-       modifier=Modifier.fillMaxWidth().clickable{
+       modifier=Modifier.border(1.dp,Border,MaterialTheme.shapes.medium).fillMaxWidth().clickable{
         selectedEmployee=e
         error=null
         summary=null
