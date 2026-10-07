@@ -115,7 +115,7 @@ class CounterRepository(context: Context){
   val pending = inserts.map{PendingTransaction(it.id,it.employee_id,it.product_variant_id,it.quantity,it.unit_price,it.operator_id,it.transaction_at?:now)}
   if(isOnline()){
    return runCatching {
-    supabase.from("transactions").insert(inserts){select()}.decodeList()
+    supabase.from("transactions").insert(inserts){select()}.decodeList<SavedTransactionRow>()
    }.getOrElse {
     // The request may have reached the server even if the client lost the response.
     // Queue the same stable IDs so sync can safely reconcile the result.
