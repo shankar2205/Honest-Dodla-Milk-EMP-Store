@@ -23,6 +23,8 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -32,6 +34,17 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
+
+private const val DAIRY_BG="https://images.unsplash.com/photo-1573731399281-6540bc50ed91?auto=format&fit=crop&fm=jpg&q=88&w=1800"
+
+@Composable
+private fun DairyBackground(tint:Color=Color(0xFF12344A)){
+ Box(Modifier.fillMaxSize()){
+  AsyncImage(model=DAIRY_BG,contentDescription="Dairy farm and cow background",modifier=Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
+  Box(Modifier.fillMaxSize().background(tint.copy(alpha=0.38f)))
+  Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.White.copy(alpha=0.20f),Color.Black.copy(alpha=0.12f)))))
+ }
+}
 
 data class Product(val id:String,val name:String,val variant:String,val price:Double,val volumeMl:Int)
 data class Employee(val id:String,val name:String,val department:String,val identifier:String,val type:String)
@@ -95,25 +108,23 @@ class MainActivity:ComponentActivity(){
 
 @Composable fun LoginScreen(loading:Boolean,error:String?,onLogin:(String,String)->Unit){
  var email by remember{mutableStateOf("")};var password by remember{mutableStateOf("")}
- Box(
-  Modifier.fillMaxSize().background(
-   Brush.linearGradient(listOf(Color(0xFF07111F),Color(0xFF102D3B),Color(0xFF32184F)))
-  ).padding(20.dp),
-  contentAlignment=Alignment.Center
- ){
+ Box(Modifier.fillMaxSize()){
+  DairyBackground(Color(0xFF0D4050))
+  Box(Modifier.fillMaxSize().background(Color.White.copy(alpha=0.18f)))
+  Box(Modifier.fillMaxSize().padding(20.dp),contentAlignment=Alignment.Center){
   Card(
    Modifier.fillMaxWidth(),
-   colors=CardDefaults.cardColors(containerColor=Color(0xFF101C2D).copy(alpha=0.96f)),
+   colors=CardDefaults.cardColors(containerColor=Color(0xFFFFFBF2).copy(alpha=0.97f)),
    elevation=CardDefaults.cardElevation(defaultElevation=12.dp),
    shape=MaterialTheme.shapes.extraLarge
   ){
    Column(Modifier.fillMaxWidth().padding(24.dp),verticalArrangement=Arrangement.spacedBy(16.dp),horizontalAlignment=Alignment.CenterHorizontally){
-    Text("HONEST MILK",style=MaterialTheme.typography.headlineLarge.copy(letterSpacing=2.sp))
-    Text("DODLA EMPLOYEE STORE",style=MaterialTheme.typography.labelLarge.copy(letterSpacing=1.8.sp))
+    Text("HONEST MILK",color=Color(0xFF12304A),style=MaterialTheme.typography.headlineLarge.copy(letterSpacing=2.sp))
+    Text("DODLA EMPLOYEE STORE",color=Color(0xFFB66A00),style=MaterialTheme.typography.labelLarge.copy(letterSpacing=1.8.sp))
     HorizontalDivider()
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(4.dp)){
-     Text("COUNTER LOGIN",style=MaterialTheme.typography.headlineSmall.copy(letterSpacing=1.2.sp))
-     Text("Sign in to start serving employees and guests.",style=MaterialTheme.typography.bodyMedium)
+     Text("COUNTER LOGIN",color=Color(0xFF12304A),style=MaterialTheme.typography.headlineSmall.copy(letterSpacing=1.2.sp))
+     Text("Sign in to start serving employees and guests.",color=Color(0xFF33485C),style=MaterialTheme.typography.bodyMedium)
     }
     OutlinedTextField(email,{email=it},label={Text("Email")},placeholder={Text("Enter your email")},singleLine=true,enabled=!loading,modifier=Modifier.fillMaxWidth())
     OutlinedTextField(password,{password=it},label={Text("Password")},placeholder={Text("Enter your password")},singleLine=true,enabled=!loading,visualTransformation=PasswordVisualTransformation(),modifier=Modifier.fillMaxWidth())
@@ -227,20 +238,20 @@ class MainActivity:ComponentActivity(){
   onDispose{lifecycleOwner.lifecycle.removeObserver(observer)}
  }
 
- Box(
-  Modifier.fillMaxSize().background(
+ Box(Modifier.fillMaxSize()){
+  DairyBackground(
    when(step){
-    0->Brush.linearGradient(listOf(Color(0xFF07111F),Color(0xFF073A45),Color(0xFF173A5E)))
-    1->Brush.linearGradient(listOf(Color(0xFF100D22),Color(0xFF242044),Color(0xFF163B4A)))
-    2->Brush.linearGradient(listOf(Color(0xFF1A0B16),Color(0xFF3A1831),Color(0xFF1C2947)))
-    else->Brush.linearGradient(listOf(Color(0xFF071A18),Color(0xFF0A3D38),Color(0xFF142A50)))
+    0->Color(0xFF0A5260)
+    1->Color(0xFF4C3A75)
+    2->Color(0xFF70402B)
+    else->Color(0xFF17604C)
    }
   )
- ){
+  Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=0.10f)))
  Column(Modifier.fillMaxSize().padding(horizontal=16.dp,vertical=14.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
   Card(
    Modifier.fillMaxWidth(),
-   colors=CardDefaults.cardColors(containerColor=Color(0xFF0B1626).copy(alpha=0.94f)),
+   colors=CardDefaults.cardColors(containerColor=Color(0xFFFFFBF2).copy(alpha=0.96f)),
    elevation=CardDefaults.cardElevation(defaultElevation=8.dp),
    shape=MaterialTheme.shapes.large
   ){
@@ -664,7 +675,7 @@ class MainActivity:ComponentActivity(){
   Surface(
    Modifier.fillMaxWidth().padding(top=2.dp),
    shape=MaterialTheme.shapes.extraLarge,
-   color=Color(0xFF091525).copy(alpha=0.98f),
+   color=Color(0xFFFFFBF2).copy(alpha=0.98f),
    tonalElevation=10.dp,
    shadowElevation=14.dp
   ){
