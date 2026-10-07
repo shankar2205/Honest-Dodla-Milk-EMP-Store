@@ -114,6 +114,14 @@ class CounterRepository(context: Context){
   }
   val pending = inserts.map{PendingTransaction(it.id,it.employee_id,it.product_variant_id,it.quantity,it.unit_price,it.operator_id,it.transaction_at?:now)}
   if(isOnline()){
+   val currentVariants=runCatching{
+    supabase.from("product_variants").select{filter{eq("active",true)}}.decodeList<VariantRow>()
+   }.getOrElse{throw IllegalStateException("Unable to verify current product prices. Please try again.")}
+   val currentPrices=currentVariants.associateBy{it.id}
+   inserts.forEach{
+    val current=currentPrices[it.product_variant_id] ?: throw IllegalStateException("Product is no longer active. Please review the cart.")
+    if(kotlin.math.abs(current.price-it.unit_price)>0.001) throw IllegalStateException("Product price changed. Please review the cart before finishing.")
+   }
    return runCatching {
     supabase.from("transactions").insert(inserts){select()}.decodeList<SavedTransactionRow>()
    }.getOrElse {
@@ -156,6 +164,8 @@ class CounterRepository(context: Context){
   offline.removePending(successful)
   return successful.size
  }
+
+ fun isPending(id:String):Boolean=offline.hasPending(id)
 
  fun pendingCount():Int=offline.pendingCount()
 }
