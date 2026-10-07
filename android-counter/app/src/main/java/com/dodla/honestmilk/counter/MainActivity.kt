@@ -35,14 +35,22 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private const val DAIRY_BG="https://images.unsplash.com/photo-1573731399281-6540bc50ed91?auto=format&fit=crop&fm=jpg&q=88&w=1800"
+private const val DAIRY_BG="https://images.unsplash.com/photo-1573731399281-6540bc50ed91?auto=format&fit=crop&fm=jpg&q=92&w=1800"
+private val Ink=Color(0xFF12304A)
+private val Cream=Color(0xFFFFFBF2)
+private val WhiteCard=Color(0xFFFFFFFF)
+private val Teal=Color(0xFF0B6575)
+private val TealPale=Color(0xFFE3F3F4)
+private val Gold=Color(0xFFB66A00)
+private val GoldPale=Color(0xFFFFF1D6)
+private val Border=Color(0xFF9CB7BF)
 
 @Composable
 private fun DairyBackground(tint:Color=Color(0xFF12344A)){
  Box(Modifier.fillMaxSize()){
   AsyncImage(model=DAIRY_BG,contentDescription="Dairy farm and cow background",modifier=Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
-  Box(Modifier.fillMaxSize().background(tint.copy(alpha=0.32f)))
-  Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.White.copy(alpha=0.22f),Color.Black.copy(alpha=0.10f)))))
+  Box(Modifier.fillMaxSize().background(tint.copy(alpha=0.16f)))
+  Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.White.copy(alpha=0.08f),Color.Black.copy(alpha=0.03f)))))
  }
 }
 
@@ -110,7 +118,7 @@ class MainActivity:ComponentActivity(){
  var email by remember{mutableStateOf("")};var password by remember{mutableStateOf("")}
  Box(Modifier.fillMaxSize()){
   DairyBackground(Color(0xFF0D4050))
-  Box(Modifier.fillMaxSize().background(Color.White.copy(alpha=0.18f)))
+  Box(Modifier.fillMaxSize().background(Color.White.copy(alpha=0.04f)))
   Box(Modifier.fillMaxSize().padding(20.dp),contentAlignment=Alignment.Center){
    Card(
     Modifier.fillMaxWidth(),
@@ -276,9 +284,9 @@ class MainActivity:ComponentActivity(){
     Surface(
      modifier=Modifier.weight(1f),
      shape=MaterialTheme.shapes.small,
-     color=if(active) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
+     color=if(active) Teal else Cream
     ){
-     Text(label,style=MaterialTheme.typography.labelMedium,modifier=Modifier.padding(vertical=8.dp,horizontal=4.dp),textAlign=androidx.compose.ui.text.style.TextAlign.Center)
+     Text(label,style=MaterialTheme.typography.labelMedium.copy(color=if(active) Color.White else Ink),modifier=Modifier.padding(vertical=8.dp,horizontal=4.dp),textAlign=androidx.compose.ui.text.style.TextAlign.Center)
     }
    }
   }
@@ -312,6 +320,8 @@ class MainActivity:ComponentActivity(){
         row.forEach{p->
          val q=productQuantities[p.id]?:0
          ElevatedCard(
+          colors=CardDefaults.elevatedCardColors(containerColor=WhiteCard),
+          border=androidx.compose.foundation.BorderStroke(1.dp,if(q>0) Gold else Border),
           modifier=Modifier.weight(1f).aspectRatio(1f).clickable{
            productQuantities=productQuantities.toMutableMap().apply{put(p.id,(this[p.id]?:0)+1)}
           },
@@ -350,7 +360,8 @@ class MainActivity:ComponentActivity(){
     if(selectedCount>0){
      Card(
       Modifier.fillMaxWidth(),
-      colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.secondaryContainer),
+      colors=CardDefaults.cardColors(containerColor=GoldPale),
+      border=androidx.compose.foundation.BorderStroke(1.dp,Gold.copy(alpha=0.55f)),
       elevation=CardDefaults.cardElevation(defaultElevation=3.dp)
      ){
       Column(Modifier.fillMaxWidth().padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
@@ -365,14 +376,14 @@ class MainActivity:ComponentActivity(){
      }
     }
     if(cart.isNotEmpty()){
-     Card(Modifier.fillMaxWidth(),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
+     Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=Cream),border=androidx.compose.foundation.BorderStroke(1.dp,Border),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
       Column(Modifier.fillMaxWidth().padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
         Text("CURRENT CART",style=MaterialTheme.typography.titleLarge)
         Text(cart.sumOf{it.quantity}.toString()+" units",style=MaterialTheme.typography.labelLarge)
        }
        cart.forEachIndexed{index,line->
-        Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.small,color=MaterialTheme.colorScheme.surfaceVariant){
+        Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.small,color=WhiteCard){
          Row(Modifier.fillMaxWidth().padding(12.dp),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
           Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(2.dp)){
            Text(line.product.name,style=MaterialTheme.typography.titleMedium)
@@ -398,7 +409,7 @@ class MainActivity:ComponentActivity(){
     Text("WHO IS TAKING PRODUCTS?",style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.Serif,letterSpacing=0.8.sp))
     Text("Find the employee or guest, then tap their name.",style=MaterialTheme.typography.bodyMedium)
 
-    Card(Modifier.fillMaxWidth(),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
+    Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=Cream),border=androidx.compose.foundation.BorderStroke(1.dp,Border),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
      Column(Modifier.fillMaxWidth().padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
       OutlinedTextField(
        search,
@@ -416,6 +427,8 @@ class MainActivity:ComponentActivity(){
 
     Row(horizontalArrangement=Arrangement.spacedBy(12.dp),modifier=Modifier.fillMaxWidth()){
      ElevatedCard(
+      colors=CardDefaults.elevatedCardColors(containerColor=WhiteCard),
+      border=androidx.compose.foundation.BorderStroke(1.dp,Teal.copy(alpha=0.45f)),
       modifier=Modifier.weight(1f).height(92.dp).clickable{showNewEmpRegister=true;error=null},
       elevation=CardDefaults.elevatedCardElevation(defaultElevation=4.dp)
      ){
@@ -425,6 +438,8 @@ class MainActivity:ComponentActivity(){
       }
      }
      ElevatedCard(
+      colors=CardDefaults.elevatedCardColors(containerColor=WhiteCard),
+      border=androidx.compose.foundation.BorderStroke(1.dp,Teal.copy(alpha=0.45f)),
       modifier=Modifier.weight(1f).height(92.dp).clickable{showAddEmployee=true;error=null},
       elevation=CardDefaults.elevatedCardElevation(defaultElevation=4.dp)
      ){
@@ -440,6 +455,8 @@ class MainActivity:ComponentActivity(){
     Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
      employees.forEach{e->
       ElevatedCard(
+       colors=CardDefaults.elevatedCardColors(containerColor=Cream),
+       border=androidx.compose.foundation.BorderStroke(1.dp,Border),
        modifier=Modifier.fillMaxWidth().clickable{
         selectedEmployee=e
         error=null
@@ -459,7 +476,7 @@ class MainActivity:ComponentActivity(){
          Text(e.identifier,style=MaterialTheme.typography.titleMedium)
          if(e.department.isNotBlank())Text(e.department,style=MaterialTheme.typography.bodyMedium)
         }
-        Surface(shape=MaterialTheme.shapes.small){
+        Surface(shape=MaterialTheme.shapes.small,color=if(e.type=="GUEST") GoldPale else TealPale){
          Text(e.type,style=MaterialTheme.typography.labelMedium,modifier=Modifier.padding(horizontal=10.dp,vertical=6.dp))
         }
        }
@@ -536,7 +553,7 @@ class MainActivity:ComponentActivity(){
     Text("REVIEW & CONFIRM",style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.Serif,letterSpacing=0.8.sp))
     Text("Please check the person and products before saving.",style=MaterialTheme.typography.bodyMedium)
 
-    Card(Modifier.fillMaxWidth(),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
+    Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=Cream),border=androidx.compose.foundation.BorderStroke(1.dp,Border),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
      Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
       Text("TAKING PRODUCTS",style=MaterialTheme.typography.labelLarge)
       Text(e.name,style=MaterialTheme.typography.headlineSmall)
@@ -546,7 +563,7 @@ class MainActivity:ComponentActivity(){
      }
     }
 
-    Card(Modifier.fillMaxWidth(),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
+    Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=Cream),border=androidx.compose.foundation.BorderStroke(1.dp,Border),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
      Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
       Text("CURRENT TRANSACTION",style=MaterialTheme.typography.labelLarge)
       cart.forEach{line->
@@ -566,7 +583,7 @@ class MainActivity:ComponentActivity(){
      }
     }
 
-    Card(Modifier.fillMaxWidth(),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
+    Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=Cream),border=androidx.compose.foundation.BorderStroke(1.dp,Border),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
      Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(6.dp)){
       Text("CONSUMPTION TILL TODAY",style=MaterialTheme.typography.labelLarge)
       if(s==null && !repo.isOnline()){
@@ -598,7 +615,8 @@ class MainActivity:ComponentActivity(){
     Column(verticalArrangement=Arrangement.spacedBy(12.dp)){
      Card(
       Modifier.fillMaxWidth(),
-      colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.primaryContainer),
+      colors=CardDefaults.cardColors(containerColor=TealPale),
+      border=androidx.compose.foundation.BorderStroke(1.dp,Teal.copy(alpha=0.5f)),
       elevation=CardDefaults.cardElevation(defaultElevation=4.dp)
      ){
       Column(
@@ -617,7 +635,7 @@ class MainActivity:ComponentActivity(){
       }
      }
 
-     Card(Modifier.fillMaxWidth(),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
+     Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=Cream),border=androidx.compose.foundation.BorderStroke(1.dp,Border),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
       Column(Modifier.fillMaxWidth().padding(18.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
        Text("RECEIPT",style=MaterialTheme.typography.labelLarge)
        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){
@@ -632,7 +650,7 @@ class MainActivity:ComponentActivity(){
       }
      }
 
-     Card(Modifier.fillMaxWidth(),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
+     Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=Cream),border=androidx.compose.foundation.BorderStroke(1.dp,Border),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
       Column(Modifier.fillMaxWidth().padding(18.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
        Text("ITEMS",style=MaterialTheme.typography.labelLarge)
        r.lines.forEach{line->
@@ -653,7 +671,7 @@ class MainActivity:ComponentActivity(){
       }
      }
 
-     Card(Modifier.fillMaxWidth(),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
+     Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=Cream),border=androidx.compose.foundation.BorderStroke(1.dp,Border),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
       Column(Modifier.fillMaxWidth().padding(18.dp),verticalArrangement=Arrangement.spacedBy(7.dp)){
        Text("CONSUMPTION TILL TODAY",style=MaterialTheme.typography.labelLarge)
        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){
@@ -674,23 +692,27 @@ class MainActivity:ComponentActivity(){
   Surface(
    Modifier.fillMaxWidth().padding(top=2.dp),
    shape=MaterialTheme.shapes.extraLarge,
-   color=Color(0xFFFFFBF2).copy(alpha=0.98f),
-   tonalElevation=10.dp,
-   shadowElevation=14.dp
+   color=Ink,
+   tonalElevation=0.dp,
+   shadowElevation=18.dp
   ){
    when(step){
     0->Button(
+     colors=ButtonDefaults.buttonColors(containerColor=Gold,contentColor=Color.White),
+     border=androidx.compose.foundation.BorderStroke(2.dp,Color.White.copy(alpha=0.7f)),
      onClick={step=1},
      enabled=cart.isNotEmpty(),
      modifier=Modifier.fillMaxWidth().height(64.dp)
     ){Text("NEXT — SELECT PERSON",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold,letterSpacing=0.7.sp))}
     1->OutlinedButton(
+     colors=ButtonDefaults.outlinedButtonColors(contentColor=Ink),
+     border=androidx.compose.foundation.BorderStroke(2.dp,Gold),
      onClick={step=0},
      modifier=Modifier.fillMaxWidth().height(60.dp)
     ){Text("BACK TO PRODUCTS",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))}
     2->Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){
-     OutlinedButton(onClick={step=0},enabled=!saving,modifier=Modifier.weight(1f).height(60.dp)){Text("BACK",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))}
-     Button(
+     OutlinedButton(colors=ButtonDefaults.outlinedButtonColors(contentColor=Ink),border=androidx.compose.foundation.BorderStroke(2.dp,Gold),onClick={step=0},enabled=!saving,modifier=Modifier.weight(1f).height(60.dp)){Text("BACK",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))}
+     Button(colors=ButtonDefaults.buttonColors(containerColor=Teal,contentColor=Color.White),border=androidx.compose.foundation.BorderStroke(2.dp,Color.White.copy(alpha=0.65f)),
       enabled=!saving,
       onClick={
        saving=true;error=null
@@ -711,10 +733,12 @@ class MainActivity:ComponentActivity(){
      ){Text(if(saving)"SAVING..." else "CONFIRM & FINISH",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold,letterSpacing=0.5.sp))}
     }
     else->Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
-     Button(onClick={onShare(buildReceiptText(receipt!!))},modifier=Modifier.fillMaxWidth().height(60.dp)){
+     Button(colors=ButtonDefaults.buttonColors(containerColor=Gold,contentColor=Color.White),border=androidx.compose.foundation.BorderStroke(2.dp,Color.White.copy(alpha=0.7f)),onClick={onShare(buildReceiptText(receipt!!))},modifier=Modifier.fillMaxWidth().height(60.dp)){
       Text("SHARE DIGITAL RECEIPT",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))
      }
      Button(
+      colors=ButtonDefaults.buttonColors(containerColor=Teal,contentColor=Color.White),
+      border=androidx.compose.foundation.BorderStroke(2.dp,Color.White.copy(alpha=0.7f)),
       onClick={cart=emptyList();selectedProduct=null;selectedEmployee=null;quantity=1;productQuantities=emptyMap();search="";summary=null;receipt=null;error=null;step=0},
       modifier=Modifier.fillMaxWidth().height(56.dp)
      ){Text("NEW TRANSACTION",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))}
