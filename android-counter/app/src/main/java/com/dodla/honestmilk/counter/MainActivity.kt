@@ -17,6 +17,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 
 data class Product(val id:String,val name:String,val variant:String,val price:Double,val volumeMl:Int)
 data class Employee(val id:String,val name:String,val department:String,val identifier:String,val type:String)
@@ -86,6 +88,19 @@ class MainActivity:ComponentActivity(){
   loading=false
  }
  LaunchedEffect(search,step){if(step==1)loadEmployees(search)}
+ LaunchedEffect(Unit){
+  while(isActive){
+   delay(15000)
+   if(repo.isOnline()){
+    runCatching{repo.syncPending()}.onSuccess{
+     pendingCount=repo.pendingCount()
+     offlineMode=false
+    }
+   } else {
+    offlineMode=true
+   }
+  }
+ }
 
  Column(Modifier.fillMaxSize().padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
   Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){Text("HONEST MILK",style=MaterialTheme.typography.titleLarge);TextButton(onClick=onLogout){Text("LOG OUT")}}
