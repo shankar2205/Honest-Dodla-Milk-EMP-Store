@@ -8,6 +8,7 @@ import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.postgrest.query.Order
 import io.github.jan.supabase.postgrest.from
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
 import java.util.UUID
 
 @Serializable data class ProductRow(val id:String,val name:String,val active:Boolean=true)
@@ -20,7 +21,8 @@ import java.util.UUID
 @Serializable data class TransactionLine(val variantId:String,val quantity:Int,val unitPrice:Double)
 @Serializable data class SavedTransactionBatch(val rows:List<SavedTransactionRow>)
 @Serializable data class EmployeeVariantSummary(val variantId:String,val variantName:String,val quantity:Int,val value:Double)
-@Serializable data class GuestEmployeeCreateParams(val pName:String,val pPhone:String?=null,val pDepartment:String?=null)
+@Serializable data class GuestEmployeeCreateParams(@SerialName("p_name") val pName:String,@SerialName("p_phone") val pPhone:String?=null,@SerialName("p_department") val pDepartment:String?=null)
+@Serializable data class EmployeeCreateParams(@SerialName("p_employee_code") val pEmployeeCode:String,@SerialName("p_name") val pName:String,@SerialName("p_phone") val pPhone:String?=null,@SerialName("p_department") val pDepartment:String?=null)
 @Serializable data class EmployeeSummary(val transactionCount:Int,val quantity:Int,val value:Double,val variants:List<EmployeeVariantSummary> = emptyList())
 
 class CounterRepository(context: Context){
@@ -78,6 +80,15 @@ class CounterRepository(context: Context){
     pPhone=phone.trim().ifBlank{null},
     pDepartment=department.trim().ifBlank{null}
    )
+  ).decodeSingle<EmployeeRow>()
+ }
+
+ suspend fun createEmployee(code:String,name:String,phone:String,department:String):EmployeeRow{
+  require(code.trim().isNotBlank()){"Employee ID is required."}
+  require(name.trim().isNotBlank()){"Employee name is required."}
+  return supabase.postgrest.rpc(
+   "create_employee",
+   EmployeeCreateParams(code.trim(),name.trim(),phone.trim().ifBlank{null},department.trim().ifBlank{null})
   ).decodeSingle<EmployeeRow>()
  }
 
