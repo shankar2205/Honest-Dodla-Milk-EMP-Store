@@ -221,6 +221,32 @@ class MainActivity:ComponentActivity(){
      }}
     }
     TextButton(onClick={step=0}){Text("BACK")}
+    if(showNewEmpRegister){
+     AlertDialog(onDismissRequest={if(!registeringEmp)showNewEmpRegister=false},title={Text("NEW EMP REGISTER")},text={
+      Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
+       Text("This will be registered as an employee, not a guest.",style=MaterialTheme.typography.bodyMedium)
+       OutlinedTextField(newEmpCode,{newEmpCode=it},label={Text("Employee ID *")},singleLine=true,enabled=!registeringEmp,modifier=Modifier.fillMaxWidth())
+       OutlinedTextField(newEmpName,{newEmpName=it},label={Text("Name *")},singleLine=true,enabled=!registeringEmp,modifier=Modifier.fillMaxWidth())
+       OutlinedTextField(newEmpPhone,{newEmpPhone=it},label={Text("Mobile (optional)")},singleLine=true,enabled=!registeringEmp,modifier=Modifier.fillMaxWidth())
+       OutlinedTextField(newEmpDepartment,{newEmpDepartment=it},label={Text("Department (optional)")},singleLine=true,enabled=!registeringEmp,modifier=Modifier.fillMaxWidth())
+      }
+     },confirmButton={
+      Button(enabled=!registeringEmp&&newEmpCode.trim().isNotBlank()&&newEmpName.trim().isNotBlank()&&repo.isOnline(),onClick={
+       registeringEmp=true;error=null
+       scope.launch{
+        runCatching{repo.createEmployee(newEmpCode,newEmpName,newEmpPhone,newEmpDepartment)}
+         .onSuccess{emp->
+          val e=Employee(emp.id,emp.name,emp.department.orEmpty(),emp.employee_code?:"","EMPLOYEE")
+          employees=(listOf(e)+employees).distinctBy{it.id};selectedEmployee=e
+          newEmpCode="";newEmpName="";newEmpPhone="";newEmpDepartment=""
+          showNewEmpRegister=false;summary=null;step=2
+          runCatching{repo.summary(e.id)}.onSuccess{summary=it}.onFailure{if(repo.isOnline())error=it.message?:"Unable to load employee summary."}
+         }.onFailure{error=it.message?:"Unable to register employee."}
+        registeringEmp=false
+       }
+      }){Text(if(registeringEmp)"REGISTERING..." else "REGISTER & CONTINUE")}
+     },dismissButton={TextButton(onClick={showNewEmpRegister=false},enabled=!registeringEmp){Text("CANCEL")}})
+    }
     if(showAddEmployee){
      AlertDialog(
       onDismissRequest={if(!addingGuest)showAddEmployee=false},
