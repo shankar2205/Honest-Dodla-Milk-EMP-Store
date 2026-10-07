@@ -89,6 +89,11 @@ class MainActivity:ComponentActivity(){
  var pendingCount by remember{mutableIntStateOf(0)}
  var offlineMode by remember{mutableStateOf(false)}
  var addingAnotherItem by remember{mutableStateOf(false)}
+ var showAddEmployee by remember{mutableStateOf(false)}
+ var newGuestName by remember{mutableStateOf("")}
+ var newGuestPhone by remember{mutableStateOf("")}
+ var newGuestDepartment by remember{mutableStateOf("")}
+ var addingGuest by remember{mutableStateOf(false)}
  val productScrollState=rememberScrollState()
 
  fun loadEmployees(q:String){scope.launch{runCatching{repo.employees(q)}.onSuccess{employees=it.map{r->Employee(r.id,r.name,r.department?:"",r.employee_code?:r.guest_code?:"GUEST",if(r.employee_code!=null)"EMPLOYEE" else "GUEST")}}.onFailure{error=it.message?:"Unable to load employees."}}}
@@ -198,13 +203,56 @@ class MainActivity:ComponentActivity(){
     }
    }
    1->{
-    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){OutlinedTextField(search,{search=it},label={Text("Employee code, name or mobile")},singleLine=true,modifier=Modifier.weight(1f));if(search.isNotBlank())TextButton(onClick={search=""}){Text("CLEAR")}}
+    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
+     OutlinedTextField(search,{search=it},label={Text("Employee code, name or mobile")},singleLine=true,modifier=Modifier.weight(1f))
+     if(search.isNotBlank())TextButton(onClick={search=""}){Text("CLEAR")}
+    }
+    OutlinedButton(onClick={showAddEmployee=true;error=null},enabled=!addingGuest,modifier=Modifier.fillMaxWidth().height(54.dp)){Text("ADD EMPLOYEE")}
+    Text("New entries from here are added as guest employees.",style=MaterialTheme.typography.labelMedium)
     LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp),modifier=Modifier.weight(1f,false)){
      items(employees){e->OutlinedButton(onClick={selectedEmployee=e;error=null;summary=null;step=2;scope.launch{runCatching{repo.summary(e.id)}.onSuccess{summary=it}.onFailure{if(repo.isOnline())error=it.message?:"Unable to load employee summary."}}},modifier=Modifier.fillMaxWidth()){
       Column(Modifier.fillMaxWidth().padding(4.dp)){Text(e.name,style=MaterialTheme.typography.titleMedium);Text(e.identifier+" · "+e.department);Text(e.type,style=MaterialTheme.typography.labelSmall)}
      }}
     }
     TextButton(onClick={step=0}){Text("BACK")}
+    if(showAddEmployee){
+     AlertDialog(
+      onDismissRequest={if(!addingGuest)showAddEmployee=false},
+      title={Text("ADD EMPLOYEE")},
+      text={
+       Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
+        Text("This will be added as a guest employee only.",style=MaterialTheme.typography.bodyMedium)
+        OutlinedTextField(newGuestName,{newGuestName=it},label={Text("Name *")},singleLine=true,enabled=!addingGuest,modifier=Modifier.fillMaxWidth())
+        OutlinedTextField(newGuestPhone,{newGuestPhone=it},label={Text("Mobile (optional)")},singleLine=true,enabled=!addingGuest,modifier=Modifier.fillMaxWidth())
+        OutlinedTextField(newGuestDepartment,{newGuestDepartment=it},label={Text("Department (optional)")},singleLine=true,enabled=!addingGuest,modifier=Modifier.fillMaxWidth())
+       }
+      },
+      confirmButton={
+       Button(enabled=!addingGuest&&newGuestName.trim().isNotBlank()&&repo.isOnline(),onClick={
+        addingGuest=true
+        error=null
+        scope.launch{
+         runCatching{repo.createGuestEmployee(newGuestName,newGuestPhone,newGuestDepartment)}
+          .onSuccess{guest->
+           val e=Employee(guest.id,guest.name,guest.department.orEmpty(),guest.guest_code?:"GUEST","GUEST")
+           employees=(listOf(e)+employees).distinctBy{it.id}
+           selectedEmployee=e
+           newGuestName=""
+           newGuestPhone=""
+           newGuestDepartment=""
+           showAddEmployee=false
+           summary=null
+           step=2
+           runCatching{repo.summary(e.id)}.onSuccess{summary=it}.onFailure{if(repo.isOnline())error=it.message?:"Unable to load employee summary."}
+          }
+          .onFailure{error=it.message?:"Unable to add guest employee."}
+         addingGuest=false
+        }
+       }){Text(if(addingGuest)"ADDING..." else "ADD & CONTINUE")}
+      },
+      dismissButton={TextButton(onClick={showAddEmployee=false},enabled=!addingGuest){Text("CANCEL")}}
+     )
+    }
    }
    2->{
     val e=selectedEmployee!!;val s=summary
