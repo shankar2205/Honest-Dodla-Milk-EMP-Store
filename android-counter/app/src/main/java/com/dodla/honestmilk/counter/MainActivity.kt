@@ -36,17 +36,29 @@ class MainActivity:ComponentActivity(){
  var loggedIn by remember{mutableStateOf(false)}; var checking by remember{mutableStateOf(true)}; var loginError by remember{mutableStateOf<String?>(null)}
  LaunchedEffect(Unit){loggedIn=runCatching{repo.sessionExists()}.getOrDefault(false);checking=false}
  if(checking) Box(Modifier.fillMaxSize(),contentAlignment=Alignment.Center){CircularProgressIndicator()}
- else if(!loggedIn) Column(Modifier.fillMaxSize()){LoginScreen{email,password->scope.launch{checking=true;loginError=null;runCatching{repo.signIn(email,password)}.onSuccess{loggedIn=true}.onFailure{loginError=it.message?:"Login failed."};checking=false}};loginError?.let{Text(it,color=MaterialTheme.colorScheme.error,modifier=Modifier.padding(24.dp))}}
+ else if(!loggedIn) LoginScreen(loading=checking,error=loginError){email,password->
+  scope.launch{
+   checking=true
+   loginError=null
+   runCatching{repo.signIn(email,password)}
+    .onSuccess{loggedIn=true}
+    .onFailure{loginError=it.message?.takeIf{m->m.isNotBlank()} ?: "Login failed. Check the email, password, and account access."}
+   checking=false
+  }
+ }
  else CounterFlow(repo,scope,onShare){scope.launch{repo.signOut();loggedIn=false}}
 }
 
-@Composable fun LoginScreen(onLogin:(String,String)->Unit){
+@Composable fun LoginScreen(loading:Boolean,error:String?,onLogin:(String,String)->Unit){
  var email by remember{mutableStateOf("")};var password by remember{mutableStateOf("")}
  Column(Modifier.fillMaxSize().padding(24.dp),verticalArrangement=Arrangement.spacedBy(16.dp),horizontalAlignment=Alignment.CenterHorizontally){
   Spacer(Modifier.height(60.dp));Text("HONEST MILK",style=MaterialTheme.typography.headlineLarge);Text("Counter Login",style=MaterialTheme.typography.titleLarge)
-  OutlinedTextField(email,{email=it},label={Text("Email")},singleLine=true,modifier=Modifier.fillMaxWidth())
-  OutlinedTextField(password,{password=it},label={Text("Password")},singleLine=true,visualTransformation=PasswordVisualTransformation(),modifier=Modifier.fillMaxWidth())
-  Button(onClick={onLogin(email.trim(),password)},enabled=email.isNotBlank()&&password.isNotBlank(),modifier=Modifier.fillMaxWidth().height(56.dp)){Text("LOGIN")}
+  OutlinedTextField(email,{email=it},label={Text("Email")},singleLine=true,enabled=!loading,modifier=Modifier.fillMaxWidth())
+  OutlinedTextField(password,{password=it},label={Text("Password")},singleLine=true,enabled=!loading,visualTransformation=PasswordVisualTransformation(),modifier=Modifier.fillMaxWidth())
+  error?.let{Text(it,color=MaterialTheme.colorScheme.error,modifier=Modifier.fillMaxWidth())}
+  Button(onClick={onLogin(email.trim(),password)},enabled=!loading&&email.isNotBlank()&&password.isNotBlank(),modifier=Modifier.fillMaxWidth().height(56.dp)){
+   if(loading) CircularProgressIndicator(modifier=Modifier.size(22.dp),strokeWidth=2.dp) else Text("LOGIN")
+  }
  }
 }
 
