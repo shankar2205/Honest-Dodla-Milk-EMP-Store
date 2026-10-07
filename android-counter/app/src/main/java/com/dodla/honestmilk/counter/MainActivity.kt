@@ -54,6 +54,43 @@ class MainActivity:ComponentActivity(){
  private fun shareReceipt(text:String){startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply{type="text/plain";putExtra(Intent.EXTRA_TEXT,text)},"Share digital receipt"))}
 }
 
+@Composable
+fun LoginScreen(loading:Boolean,error:String?,onLogin:(String,String)->Unit){
+ var email by remember{mutableStateOf("")}
+ var password by remember{mutableStateOf("")}
+ Box(Modifier.fillMaxSize()){
+  DairyBackground(Color(0xFF0D4050))
+  Box(Modifier.fillMaxSize().background(Color.White.copy(alpha=0.18f)))
+  Box(Modifier.fillMaxSize().padding(20.dp),contentAlignment=Alignment.Center){
+   Card(
+    Modifier.fillMaxWidth(),
+    colors=CardDefaults.cardColors(containerColor=Color(0xFFFFFBF2).copy(alpha=0.97f)),
+    elevation=CardDefaults.cardElevation(defaultElevation=14.dp),
+    shape=MaterialTheme.shapes.extraLarge
+   ){
+    Column(Modifier.fillMaxWidth().padding(26.dp),verticalArrangement=Arrangement.spacedBy(16.dp),horizontalAlignment=Alignment.CenterHorizontally){
+     Text("HONEST MILK",color=Color(0xFF12304A),style=MaterialTheme.typography.headlineLarge.copy(letterSpacing=2.sp,fontWeight=FontWeight.ExtraBold))
+     Text("DODLA EMPLOYEE STORE",color=Color(0xFFB66A00),style=MaterialTheme.typography.labelLarge.copy(letterSpacing=1.8.sp,fontWeight=FontWeight.Bold))
+     HorizontalDivider()
+     Text("COUNTER LOGIN",color=Color(0xFF12304A),style=MaterialTheme.typography.headlineSmall.copy(letterSpacing=1.2.sp,fontWeight=FontWeight.ExtraBold))
+     Text("Sign in to start serving employees and guests.",color=Color(0xFF41566B),style=MaterialTheme.typography.bodyMedium)
+     OutlinedTextField(value=email,onValueChange={email=it},label={Text("Email")},placeholder={Text("Enter your email")},singleLine=true,enabled=!loading,modifier=Modifier.fillMaxWidth())
+     OutlinedTextField(value=password,onValueChange={password=it},label={Text("Password")},placeholder={Text("Enter your password")},singleLine=true,enabled=!loading,visualTransformation=PasswordVisualTransformation(),modifier=Modifier.fillMaxWidth())
+     error?.let{
+      Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.medium,color=MaterialTheme.colorScheme.errorContainer){
+       Text(it,Modifier.padding(14.dp),color=MaterialTheme.colorScheme.onErrorContainer)
+      }
+     }
+     Button(onClick={onLogin(email.trim(),password)},enabled=!loading&&email.isNotBlank()&&password.isNotBlank(),modifier=Modifier.fillMaxWidth().height(60.dp),shape=MaterialTheme.shapes.large){
+      if(loading) CircularProgressIndicator(modifier=Modifier.size(24.dp),strokeWidth=3.dp)
+      else Text("LOGIN",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold,letterSpacing=1.sp))
+     }
+    }
+   }
+  }
+ }
+}
+
 @Composable fun CounterApp(onShare:(String)->Unit){
  val darkColors=darkColorScheme(
   primary=Color(0xFF0B6575),
