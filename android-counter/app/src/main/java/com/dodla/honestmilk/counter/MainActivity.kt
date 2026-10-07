@@ -250,29 +250,78 @@ class MainActivity:ComponentActivity(){
     }
    }
    1->{
-    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
-     OutlinedTextField(search,{search=it},label={Text("Employee code, name or mobile")},singleLine=true,modifier=Modifier.weight(1f))
-     if(search.isNotBlank())TextButton(onClick={search=""}){Text("CLEAR")}
+    Text("WHO IS TAKING PRODUCTS?",style=MaterialTheme.typography.titleLarge)
+    Text("Find the employee or guest, then tap their name.",style=MaterialTheme.typography.bodyMedium)
+
+    Card(Modifier.fillMaxWidth(),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
+     Column(Modifier.fillMaxWidth().padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
+      OutlinedTextField(
+       search,
+       {search=it},
+       label={Text("Search employee ID, name or mobile")},
+       placeholder={Text("Start typing to find someone")},
+       singleLine=true,
+       modifier=Modifier.fillMaxWidth()
+      )
+      if(search.isNotBlank()){
+       TextButton(onClick={search=""},modifier=Modifier.align(Alignment.End)){Text("CLEAR SEARCH")}
+      }
+     }
     }
-    Row(horizontalArrangement=Arrangement.spacedBy(10.dp),modifier=Modifier.fillMaxWidth()){
-     OutlinedButton(
-      onClick={showNewEmpRegister=true;error=null},
-      enabled=!registeringEmp,
-      modifier=Modifier.weight(1f).height(54.dp)
-     ){Text("NEW EMP REGISTER")}
-     OutlinedButton(
-      onClick={showAddEmployee=true;error=null},
-      enabled=!addingGuest,
-      modifier=Modifier.weight(1f).height(54.dp)
-     ){Text("REGISTER AS GUEST")}
+
+    Row(horizontalArrangement=Arrangement.spacedBy(12.dp),modifier=Modifier.fillMaxWidth()){
+     ElevatedCard(
+      modifier=Modifier.weight(1f).height(92.dp).clickable{showNewEmpRegister=true;error=null},
+      elevation=CardDefaults.elevatedCardElevation(defaultElevation=4.dp)
+     ){
+      Column(Modifier.fillMaxSize().padding(12.dp),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally){
+       Text("NEW EMP",style=MaterialTheme.typography.titleMedium)
+       Text("REGISTER",style=MaterialTheme.typography.titleMedium)
+      }
+     }
+     ElevatedCard(
+      modifier=Modifier.weight(1f).height(92.dp).clickable{showAddEmployee=true;error=null},
+      elevation=CardDefaults.elevatedCardElevation(defaultElevation=4.dp)
+     ){
+      Column(Modifier.fillMaxSize().padding(12.dp),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally){
+       Text("REGISTER AS",style=MaterialTheme.typography.titleMedium)
+       Text("GUEST",style=MaterialTheme.typography.titleMedium)
+      }
+     }
     }
-    Text("NEW EMP REGISTER creates an employee. REGISTER AS GUEST creates a guest only.",style=MaterialTheme.typography.labelMedium)
-    LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp),modifier=Modifier.weight(1f,false)){
-     items(employees){e->OutlinedButton(onClick={selectedEmployee=e;error=null;summary=null;step=2;scope.launch{runCatching{repo.summary(e.id)}.onSuccess{summary=it}.onFailure{if(repo.isOnline())error=it.message?:"Unable to load employee summary."}}},modifier=Modifier.fillMaxWidth()){
-      Column(Modifier.fillMaxWidth().padding(4.dp)){Text(e.name,style=MaterialTheme.typography.titleMedium);Text(e.identifier+" · "+e.department);Text(e.type,style=MaterialTheme.typography.labelSmall)}
-     }}
+
+    Text("Choose an existing person below, or register someone new.",style=MaterialTheme.typography.labelMedium)
+
+    LazyColumn(verticalArrangement=Arrangement.spacedBy(10.dp),modifier=Modifier.weight(1f,false)){
+     items(employees){e->
+      ElevatedCard(
+       modifier=Modifier.fillMaxWidth().clickable{
+        selectedEmployee=e
+        error=null
+        summary=null
+        step=2
+        scope.launch{
+         runCatching{repo.summary(e.id)}
+          .onSuccess{summary=it}
+          .onFailure{if(repo.isOnline())error=it.message?:"Unable to load employee summary."}
+        }
+       },
+       elevation=CardDefaults.elevatedCardElevation(defaultElevation=3.dp)
+      ){
+       Row(Modifier.fillMaxWidth().padding(14.dp),verticalAlignment=Alignment.CenterVertically){
+        Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){
+         Text(e.name,style=MaterialTheme.typography.titleLarge)
+         Text(e.identifier,style=MaterialTheme.typography.titleMedium)
+         if(e.department.isNotBlank())Text(e.department,style=MaterialTheme.typography.bodyMedium)
+        }
+        Surface(shape=MaterialTheme.shapes.small){
+         Text(e.type,style=MaterialTheme.typography.labelMedium,modifier=Modifier.padding(horizontal=10.dp,vertical=6.dp))
+        }
+       }
+      }
+     }
     }
-    TextButton(onClick={step=0}){Text("BACK")}
+    TextButton(onClick={step=0},modifier=Modifier.fillMaxWidth()){Text("BACK TO PRODUCTS")}
     if(showNewEmpRegister){
      AlertDialog(onDismissRequest={if(!registeringEmp)showNewEmpRegister=false},title={Text("NEW EMP REGISTER")},text={
       Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
