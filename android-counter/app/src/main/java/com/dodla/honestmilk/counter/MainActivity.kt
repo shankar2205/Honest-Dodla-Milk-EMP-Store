@@ -180,10 +180,10 @@ class MainActivity:ComponentActivity(){
      scope.launch{
       runCatching{repo.save(e.id,cart.map{TransactionLine(it.product.id,it.quantity,it.product.price)})}
        .onSuccess{saved->
-        val wasOffline=!repo.isOnline()
-        receipt=SavedReceipt(saved.map{it.id},e,cart,cartTotal(),s?.quantity?:0,s?.value?:0.0,saved.firstOrNull()?.transaction_at?:"",wasOffline)
+        val pending=saved.any{repo.isPending(it.id)}
+        receipt=SavedReceipt(saved.map{it.id},e,cart,cartTotal(),s?.quantity?:0,s?.value?:0.0,saved.firstOrNull()?.transaction_at?:"",pending)
         pendingCount=repo.pendingCount()
-        offlineMode=wasOffline
+        offlineMode=pending||!repo.isOnline()
         step=3
        }
        .onFailure{error=it.message?:"Unable to save transaction."}
