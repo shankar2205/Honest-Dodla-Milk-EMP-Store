@@ -58,15 +58,29 @@ class MainActivity:ComponentActivity(){
 
 @Composable fun LoginScreen(loading:Boolean,error:String?,onLogin:(String,String)->Unit){
  var email by remember{mutableStateOf("")};var password by remember{mutableStateOf("")}
- Column(Modifier.fillMaxSize().padding(24.dp),verticalArrangement=Arrangement.spacedBy(16.dp),horizontalAlignment=Alignment.CenterHorizontally){
-  Spacer(Modifier.height(60.dp));Text("HONEST MILK",style=MaterialTheme.typography.headlineLarge);Text("Counter Login",style=MaterialTheme.typography.titleLarge)
-  OutlinedTextField(email,{email=it},label={Text("Email")},singleLine=true,enabled=!loading,modifier=Modifier.fillMaxWidth())
-  OutlinedTextField(password,{password=it},label={Text("Password")},singleLine=true,enabled=!loading,visualTransformation=PasswordVisualTransformation(),modifier=Modifier.fillMaxWidth())
-  error?.let{Text(it,color=MaterialTheme.colorScheme.error,modifier=Modifier.fillMaxWidth())}
-  Button(onClick={onLogin(email.trim(),password)},enabled=!loading&&email.isNotBlank()&&password.isNotBlank(),modifier=Modifier.fillMaxWidth().height(56.dp)){
-   if(loading) CircularProgressIndicator(modifier=Modifier.size(22.dp),strokeWidth=2.dp) else Text("LOGIN")
+ Box(Modifier.fillMaxSize().padding(20.dp),contentAlignment=Alignment.Center){
+  Card(Modifier.fillMaxWidth(),elevation=CardDefaults.cardElevation(defaultElevation=5.dp)){
+   Column(Modifier.fillMaxWidth().padding(24.dp),verticalArrangement=Arrangement.spacedBy(16.dp),horizontalAlignment=Alignment.CenterHorizontally){
+    Text("HONEST MILK",style=MaterialTheme.typography.headlineLarge)
+    Text("DODLA EMPLOYEE STORE",style=MaterialTheme.typography.labelLarge)
+    HorizontalDivider()
+    Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(4.dp)){
+     Text("COUNTER LOGIN",style=MaterialTheme.typography.titleLarge)
+     Text("Sign in to start serving employees and guests.",style=MaterialTheme.typography.bodyMedium)
+    }
+    OutlinedTextField(email,{email=it},label={Text("Email")},placeholder={Text("Enter your email")},singleLine=true,enabled=!loading,modifier=Modifier.fillMaxWidth())
+    OutlinedTextField(password,{password=it},label={Text("Password")},placeholder={Text("Enter your password")},singleLine=true,enabled=!loading,visualTransformation=PasswordVisualTransformation(),modifier=Modifier.fillMaxWidth())
+    error?.let{
+     Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.small,color=MaterialTheme.colorScheme.errorContainer){
+      Text(it,modifier=Modifier.padding(10.dp),color=MaterialTheme.colorScheme.onErrorContainer)
+     }
+    }
+    Button(onClick={onLogin(email.trim(),password)},enabled=!loading&&email.isNotBlank()&&password.isNotBlank(),modifier=Modifier.fillMaxWidth().height(60.dp)){
+     if(loading) CircularProgressIndicator(modifier=Modifier.size(22.dp),strokeWidth=2.dp) else Text("LOGIN",style=MaterialTheme.typography.titleMedium)
+    }
+   }
   }
- }
+ } 
 }
 
 @Composable fun CounterFlow(repo:CounterRepository,scope:CoroutineScope,onShare:(String)->Unit,onLogout:()->Unit){
