@@ -96,7 +96,8 @@ class MainActivity:ComponentActivity(){
    val ps=repo.products()
    val vs=repo.variants()
    products=vs.mapNotNull{v->ps.find{it.id==v.product_id}?.let{p->Product(v.id,p.name,v.variant_name,v.price,v.unit_volume_ml)}}
-  }.onFailure{error=it.message?:"Unable to load counter data."}
+   if(products.isEmpty()) error("No active products are available. Please check the Admin product setup.")
+  }.onFailure{error=it.message?.takeIf{m->m.isNotBlank()} ?: "Unable to load counter data."}
   offlineMode=!repo.isOnline()
   pendingCount=repo.pendingCount()
   loading=false
