@@ -8,6 +8,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -19,6 +20,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -38,6 +42,38 @@ class MainActivity:ComponentActivity(){
 }
 
 @Composable fun CounterApp(onShare:(String)->Unit){
+ val darkColors=darkColorScheme(
+  primary=Color(0xFFFFC107),
+  onPrimary=Color(0xFF1A1300),
+  primaryContainer=Color(0xFF4D3B00),
+  onPrimaryContainer=Color(0xFFFFE7A0),
+  secondary=Color(0xFF4DD0E1),
+  onSecondary=Color(0xFF00252A),
+  secondaryContainer=Color(0xFF063F46),
+  onSecondaryContainer=Color(0xFFB8F4FB),
+  background=Color(0xFF07111F),
+  onBackground=Color(0xFFF4F7FB),
+  surface=Color(0xFF101C2D),
+  onSurface=Color(0xFFF4F7FB),
+  surfaceVariant=Color(0xFF1B2A3D),
+  onSurfaceVariant=Color(0xFFB8C5D6),
+  error=Color(0xFFFF6B6B),
+  errorContainer=Color(0xFF4A1F26),
+  onErrorContainer=Color(0xFFFFDAD6)
+ )
+ val boldTypography=Typography(
+  displayLarge=MaterialTheme.typography.displayLarge.copy(fontFamily=FontFamily.Serif,fontWeight=FontWeight.ExtraBold),
+  displayMedium=MaterialTheme.typography.displayMedium.copy(fontFamily=FontFamily.Serif,fontWeight=FontWeight.ExtraBold),
+  displaySmall=MaterialTheme.typography.displaySmall.copy(fontFamily=FontFamily.Serif,fontWeight=FontWeight.ExtraBold),
+  headlineLarge=MaterialTheme.typography.headlineLarge.copy(fontFamily=FontFamily.Serif,fontWeight=FontWeight.ExtraBold),
+  headlineMedium=MaterialTheme.typography.headlineMedium.copy(fontFamily=FontFamily.Serif,fontWeight=FontWeight.ExtraBold),
+  headlineSmall=MaterialTheme.typography.headlineSmall.copy(fontFamily=FontFamily.Serif,fontWeight=FontWeight.Bold),
+  titleLarge=MaterialTheme.typography.titleLarge.copy(fontWeight=FontWeight.Bold),
+  titleMedium=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.Bold),
+  labelLarge=MaterialTheme.typography.labelLarge.copy(fontWeight=FontWeight.Bold),
+  labelMedium=MaterialTheme.typography.labelMedium.copy(fontWeight=FontWeight.Bold)
+ )
+ MaterialTheme(colorScheme=darkColors,typography=boldTypography){
  val context=LocalContext.current.applicationContext
  val repo=remember{CounterRepository(context)}; val scope=rememberCoroutineScope()
  var loggedIn by remember{mutableStateOf(false)}; var checking by remember{mutableStateOf(true)}; var loginError by remember{mutableStateOf<String?>(null)}
@@ -54,18 +90,29 @@ class MainActivity:ComponentActivity(){
   }
  }
  else CounterFlow(repo,scope,onShare){scope.launch{repo.signOut();loggedIn=false}}
+ }
 }
 
 @Composable fun LoginScreen(loading:Boolean,error:String?,onLogin:(String,String)->Unit){
  var email by remember{mutableStateOf("")};var password by remember{mutableStateOf("")}
- Box(Modifier.fillMaxSize().padding(20.dp),contentAlignment=Alignment.Center){
-  Card(Modifier.fillMaxWidth(),elevation=CardDefaults.cardElevation(defaultElevation=5.dp)){
+ Box(
+  Modifier.fillMaxSize().background(
+   Brush.linearGradient(listOf(Color(0xFF07111F),Color(0xFF102D3B),Color(0xFF32184F)))
+  ).padding(20.dp),
+  contentAlignment=Alignment.Center
+ ){
+  Card(
+   Modifier.fillMaxWidth(),
+   colors=CardDefaults.cardColors(containerColor=Color(0xFF101C2D).copy(alpha=0.96f)),
+   elevation=CardDefaults.cardElevation(defaultElevation=12.dp),
+   shape=MaterialTheme.shapes.extraLarge
+  ){
    Column(Modifier.fillMaxWidth().padding(24.dp),verticalArrangement=Arrangement.spacedBy(16.dp),horizontalAlignment=Alignment.CenterHorizontally){
-    Text("HONEST MILK",style=MaterialTheme.typography.headlineLarge)
-    Text("DODLA EMPLOYEE STORE",style=MaterialTheme.typography.labelLarge)
+    Text("HONEST MILK",style=MaterialTheme.typography.headlineLarge.copy(letterSpacing=2.sp))
+    Text("DODLA EMPLOYEE STORE",style=MaterialTheme.typography.labelLarge.copy(letterSpacing=1.8.sp))
     HorizontalDivider()
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(4.dp)){
-     Text("COUNTER LOGIN",style=MaterialTheme.typography.titleLarge)
+     Text("COUNTER LOGIN",style=MaterialTheme.typography.headlineSmall.copy(letterSpacing=1.2.sp))
      Text("Sign in to start serving employees and guests.",style=MaterialTheme.typography.bodyMedium)
     }
     OutlinedTextField(email,{email=it},label={Text("Email")},placeholder={Text("Enter your email")},singleLine=true,enabled=!loading,modifier=Modifier.fillMaxWidth())
@@ -180,11 +227,26 @@ class MainActivity:ComponentActivity(){
   onDispose{lifecycleOwner.lifecycle.removeObserver(observer)}
  }
 
+ Box(
+  Modifier.fillMaxSize().background(
+   when(step){
+    0->Brush.linearGradient(listOf(Color(0xFF07111F),Color(0xFF073A45),Color(0xFF173A5E)))
+    1->Brush.linearGradient(listOf(Color(0xFF100D22),Color(0xFF242044),Color(0xFF163B4A)))
+    2->Brush.linearGradient(listOf(Color(0xFF1A0B16),Color(0xFF3A1831),Color(0xFF1C2947)))
+    else->Brush.linearGradient(listOf(Color(0xFF071A18),Color(0xFF0A3D38),Color(0xFF142A50)))
+   }
+  )
+ ){
  Column(Modifier.fillMaxSize().padding(horizontal=16.dp,vertical=14.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
-  Card(Modifier.fillMaxWidth(),elevation=CardDefaults.cardElevation(defaultElevation=2.dp)){
+  Card(
+   Modifier.fillMaxWidth(),
+   colors=CardDefaults.cardColors(containerColor=Color(0xFF0B1626).copy(alpha=0.94f)),
+   elevation=CardDefaults.cardElevation(defaultElevation=8.dp),
+   shape=MaterialTheme.shapes.large
+  ){
    Row(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=12.dp),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
     Column(verticalArrangement=Arrangement.spacedBy(2.dp)){
-     Text("HONEST MILK",style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.Serif,letterSpacing=1.5.sp))
+     Text("HONEST MILK",style=MaterialTheme.typography.headlineSmall.copy(fontFamily=FontFamily.Serif,fontWeight=FontWeight.ExtraBold,letterSpacing=2.sp))
      Text("DODLA EMPLOYEE STORE",style=MaterialTheme.typography.labelMedium)
     }
     TextButton(onClick=onLogout){Text("LOG OUT")}
@@ -600,23 +662,24 @@ class MainActivity:ComponentActivity(){
   }
 
   Surface(
-   Modifier.fillMaxWidth(),
-   shape=MaterialTheme.shapes.large,
-   tonalElevation=4.dp,
-   shadowElevation=4.dp
+   Modifier.fillMaxWidth().padding(top=2.dp),
+   shape=MaterialTheme.shapes.extraLarge,
+   color=Color(0xFF091525).copy(alpha=0.98f),
+   tonalElevation=10.dp,
+   shadowElevation=14.dp
   ){
    when(step){
     0->Button(
      onClick={step=1},
      enabled=cart.isNotEmpty(),
-     modifier=Modifier.fillMaxWidth().height(60.dp)
-    ){Text("NEXT — SELECT PERSON",style=MaterialTheme.typography.titleMedium)}
+     modifier=Modifier.fillMaxWidth().height(64.dp)
+    ){Text("NEXT — SELECT PERSON",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold,letterSpacing=0.7.sp))}
     1->OutlinedButton(
      onClick={step=0},
-     modifier=Modifier.fillMaxWidth().height(56.dp)
-    ){Text("BACK TO PRODUCTS",style=MaterialTheme.typography.titleMedium)}
+     modifier=Modifier.fillMaxWidth().height(60.dp)
+    ){Text("BACK TO PRODUCTS",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))}
     2->Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){
-     OutlinedButton(onClick={step=0},enabled=!saving,modifier=Modifier.weight(1f).height(56.dp)){Text("BACK")}
+     OutlinedButton(onClick={step=0},enabled=!saving,modifier=Modifier.weight(1f).height(60.dp)){Text("BACK",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))}
      Button(
       enabled=!saving,
       onClick={
@@ -634,20 +697,21 @@ class MainActivity:ComponentActivity(){
         saving=false
        }
       },
-      modifier=Modifier.weight(1.6f).height(60.dp)
-     ){Text(if(saving)"SAVING..." else "CONFIRM & FINISH",style=MaterialTheme.typography.titleMedium)}
+      modifier=Modifier.weight(1.6f).height(64.dp)
+     ){Text(if(saving)"SAVING..." else "CONFIRM & FINISH",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold,letterSpacing=0.5.sp))}
     }
     else->Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
      Button(onClick={onShare(buildReceiptText(receipt!!))},modifier=Modifier.fillMaxWidth().height(60.dp)){
-      Text("SHARE DIGITAL RECEIPT",style=MaterialTheme.typography.titleMedium)
+      Text("SHARE DIGITAL RECEIPT",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))
      }
      Button(
       onClick={cart=emptyList();selectedProduct=null;selectedEmployee=null;quantity=1;productQuantities=emptyMap();search="";summary=null;receipt=null;error=null;step=0},
       modifier=Modifier.fillMaxWidth().height(56.dp)
-     ){Text("NEW TRANSACTION",style=MaterialTheme.typography.titleMedium)}
+     ){Text("NEW TRANSACTION",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))}
     }
    }
   }
+ }
  }
  }
 }
