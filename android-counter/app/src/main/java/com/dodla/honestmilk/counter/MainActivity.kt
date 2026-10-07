@@ -88,7 +88,6 @@ class MainActivity:ComponentActivity(){
  var receipt by remember{mutableStateOf<SavedReceipt?>(null)}
  var pendingCount by remember{mutableIntStateOf(0)}
  var offlineMode by remember{mutableStateOf(false)}
- var addingAnotherItem by remember{mutableStateOf(false)}
  var showAddEmployee by remember{mutableStateOf(false)}
  var showNewEmpRegister by remember{mutableStateOf(false)}
  var newEmpCode by remember{mutableStateOf("")}
@@ -100,14 +99,21 @@ class MainActivity:ComponentActivity(){
  var newGuestPhone by remember{mutableStateOf("")}
  var newGuestDepartment by remember{mutableStateOf("")}
  var addingGuest by remember{mutableStateOf(false)}
+ var productQuantities by remember{mutableStateOf<Map<String,Int>>(emptyMap())}
  val productScrollState=rememberScrollState()
 
  fun loadEmployees(q:String){scope.launch{runCatching{repo.employees(q)}.onSuccess{employees=it.map{r->Employee(r.id,r.name,r.department?:"",r.employee_code?:r.guest_code?:"GUEST",if(r.employee_code!=null)"EMPLOYEE" else "GUEST")}}.onFailure{error=it.message?:"Unable to load employees."}}}
- fun addToCart(){
-  val p=selectedProduct?:return
-  val existing=cart.firstOrNull{it.product.id==p.id}
-  cart=if(existing==null) cart+CartLine(p,quantity) else cart.map{if(it.product.id==p.id)it.copy(quantity=it.quantity+quantity)else it}
-  selectedProduct=null;quantity=1;addingAnotherItem=false
+ fun addSelectedProductsToCart(){
+  val selected=products.mapNotNull{p->
+   val q=productQuantities[p.id]?:0
+   if(q>0) CartLine(p,q) else null
+  }
+  if(selected.isEmpty()) return
+  selected.forEach{line->
+   val existing=cart.firstOrNull{it.product.id==line.product.id}
+   cart=if(existing==null) cart+line else cart.map{if(it.product.id==line.product.id)it.copy(quantity=it.quantity+line.quantity)else it}
+  }
+  productQuantities=emptyMap()
  }
  fun cartTotal()=cart.sumOf{it.product.price*it.quantity}
 
@@ -172,17 +178,32 @@ class MainActivity:ComponentActivity(){
   error?.let{Text(it,color=MaterialTheme.colorScheme.error)}
   when(step){
    0->{
-    Text(if(addingAnotherItem)"SELECT ANOTHER ITEM" else "SELECT PRODUCTS",style=MaterialTheme.typography.titleLarge)
+    Text("SELECT PRODUCTS",style=MaterialTheme.typography.titleLarge)
     if(loading)CircularProgressIndicator()
     products.forEach{p->
-     OutlinedButton(onClick={selectedProduct=p;quantity=1;error=null},modifier=Modifier.fillMaxWidth().height(72.dp)){
-      Column(horizontalAlignment=Alignment.CenterHorizontally){Text(p.name+" — "+p.variant,style=MaterialTheme.typography.titleMedium);Text("₹"+String.format("%.2f",p.price))}
+     val q=productQuantities[p.id]?:0
+     OutlinedCard(Modifier.fillMaxWidth()){
+      Row(Modifier.fillMaxWidth().padding(12.dp),verticalAlignment=Alignment.CenterVertically){
+       Column(Modifier.weight(1f)){
+        Text(p.name+" — "+p.variant,style=MaterialTheme.typography.titleMedium)
+        Text("₹"+String.format("%.2f",p.price))
+       }
+       Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){
+        FilledTonalButton(onClick={
+         productQuantities=productQuantities.toMutableMap().apply{put(p.id,maxOf(0,(this[p.id]?:0)-1))}
+        },enabled=q>0){Text("−")}
+        Text(q.toString(),style=MaterialTheme.typography.titleLarge)
+        FilledTonalButton(onClick={
+         productQuantities=productQuantities.toMutableMap().apply{put(p.id,(this[p.id]?:0)+1)}
+        }){Text("+")}
+       }
+      }
      }
     }
-    selectedProduct?.let{p->
-     Text("Add: "+p.name+" — "+p.variant,style=MaterialTheme.typography.titleMedium)
-     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.Center,verticalAlignment=Alignment.CenterVertically){Button(onClick={if(quantity>1)quantity--}){Text("−")};Text("  "+quantity+"  ",style=MaterialTheme.typography.titleLarge);Button(onClick={quantity++}){Text("+")}}
-     Button(onClick={addToCart()},modifier=Modifier.fillMaxWidth().height(52.dp)){Text("ADD TO CART")}
+    val selectedCount=productQuantities.values.sum()
+    if(selectedCount>0){
+     Text("Selected quantity: "+selectedCount,style=MaterialTheme.typography.titleMedium)
+     Button(onClick={addSelectedProductsToCart()},modifier=Modifier.fillMaxWidth().height(56.dp)){Text("ADD TO CART")}
     }
     if(cart.isNotEmpty()){
      HorizontalDivider()
@@ -195,16 +216,6 @@ class MainActivity:ComponentActivity(){
       }
      }
      Text("Cart total ₹"+String.format("%.2f",cartTotal()),style=MaterialTheme.typography.titleLarge)
-     OutlinedButton(
-      onClick={
-       selectedProduct=null
-       quantity=1
-       error=null
-       addingAnotherItem=true
-       scope.launch{productScrollState.animateScrollTo(0)}
-      },
-      modifier=Modifier.fillMaxWidth().height(52.dp)
-     ){Text("+ ADD ANOTHER ITEM")}
      Button(onClick={step=1},modifier=Modifier.fillMaxWidth().height(56.dp)){Text("NEXT")}
     }
    }
@@ -347,7 +358,7 @@ class MainActivity:ComponentActivity(){
      }
     }
     Button(onClick={onShare(buildReceiptText(r))},modifier=Modifier.fillMaxWidth().height(56.dp)){Text("SHARE DIGITAL RECEIPT")}
-    Button(onClick={cart=emptyList();selectedProduct=null;selectedEmployee=null;quantity=1;search="";summary=null;receipt=null;error=null;addingAnotherItem=false;step=0},modifier=Modifier.fillMaxWidth().height(56.dp)){Text("NEW TRANSACTION")}
+    Button(onClick={cart=emptyList();selectedProduct=null;selectedEmployee=null;quantity=1;productQuantities=emptyMap();search="";summary=null;receipt=null;error=null;step=0},modifier=Modifier.fillMaxWidth().height(56.dp)){Text("NEW TRANSACTION")}
    }
   }
  }
