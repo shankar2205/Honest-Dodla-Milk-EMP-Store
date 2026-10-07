@@ -520,23 +520,7 @@ class MainActivity:ComponentActivity(){
      }
     }
 
-    Button(enabled=!saving,onClick={
-     saving=true;error=null
-     scope.launch{
-      runCatching{repo.save(e.id,cart.map{TransactionLine(it.product.id,it.quantity,it.product.price)})}
-       .onSuccess{saved->
-        val pending=saved.any{repo.isPending(it.id)}
-        receipt=SavedReceipt(saved.map{it.id},e,cart,cartTotal(),s?.quantity?:0,s?.value?:0.0,saved.firstOrNull()?.transaction_at?:"",pending)
-        pendingCount=repo.pendingCount()
-        offlineMode=pending||!repo.isOnline()
-        step=3
        }
-       .onFailure{error=it.message?:"Unable to save transaction."}
-      saving=false
-     }
-    },modifier=Modifier.fillMaxWidth().height(60.dp)){Text(if(saving)"SAVING..." else "CONFIRM & FINISH")}
-    TextButton(onClick={step=0},enabled=!saving){Text("BACK")}
-   }
    else->{
     val r=receipt!!
     Column(verticalArrangement=Arrangement.spacedBy(12.dp)){
@@ -611,16 +595,60 @@ class MainActivity:ComponentActivity(){
       }
      }
 
-     Button(onClick={onShare(buildReceiptText(r))},modifier=Modifier.fillMaxWidth().height(60.dp)){
+         }
+   }
+  }
+
+  Surface(
+   Modifier.fillMaxWidth(),
+   shape=MaterialTheme.shapes.large,
+   tonalElevation=4.dp,
+   shadowElevation=4.dp
+  ){
+   when(step){
+    0->Button(
+     onClick={step=1},
+     enabled=cart.isNotEmpty(),
+     modifier=Modifier.fillMaxWidth().height(60.dp)
+    ){Text("NEXT — SELECT PERSON",style=MaterialTheme.typography.titleMedium)}
+    1->OutlinedButton(
+     onClick={step=0},
+     modifier=Modifier.fillMaxWidth().height(56.dp)
+    ){Text("BACK TO PRODUCTS",style=MaterialTheme.typography.titleMedium)}
+    2->Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){
+     OutlinedButton(onClick={step=0},enabled=!saving,modifier=Modifier.weight(1f).height(56.dp)){Text("BACK")}
+     Button(
+      enabled=!saving,
+      onClick={
+       saving=true;error=null
+       scope.launch{
+        runCatching{repo.save(selectedEmployee!!.id,cart.map{TransactionLine(it.product.id,it.quantity,it.product.price)})}
+         .onSuccess{saved->
+          val pending=saved.any{repo.isPending(it.id)}
+          receipt=SavedReceipt(saved.map{it.id},selectedEmployee!!,cart,cartTotal(),summary?.quantity?:0,summary?.value?:0.0,saved.firstOrNull()?.transaction_at?:"",pending)
+          pendingCount=repo.pendingCount()
+          offlineMode=pending||!repo.isOnline()
+          step=3
+         }
+         .onFailure{error=it.message?:"Unable to save transaction."}
+        saving=false
+       }
+      },
+      modifier=Modifier.weight(1.6f).height(60.dp)
+     ){Text(if(saving)"SAVING..." else "CONFIRM & FINISH",style=MaterialTheme.typography.titleMedium)}
+    }
+    else->Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
+     Button(onClick={onShare(buildReceiptText(receipt!!))},modifier=Modifier.fillMaxWidth().height(60.dp)){
       Text("SHARE DIGITAL RECEIPT",style=MaterialTheme.typography.titleMedium)
      }
-     Button(onClick={cart=emptyList();selectedProduct=null;selectedEmployee=null;quantity=1;productQuantities=emptyMap();search="";summary=null;receipt=null;error=null;step=0},modifier=Modifier.fillMaxWidth().height(60.dp)){
-      Text("NEW TRANSACTION",style=MaterialTheme.typography.titleMedium)
-     }
+     Button(
+      onClick={cart=emptyList();selectedProduct=null;selectedEmployee=null;quantity=1;productQuantities=emptyMap();search="";summary=null;receipt=null;error=null;step=0},
+      modifier=Modifier.fillMaxWidth().height(56.dp)
+     ){Text("NEW TRANSACTION",style=MaterialTheme.typography.titleMedium)}
     }
    }
   }
-  }
+ }
  }
 }
 
