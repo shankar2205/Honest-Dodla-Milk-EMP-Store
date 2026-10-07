@@ -213,7 +213,18 @@ class MainActivity:ComponentActivity(){
      OutlinedTextField(search,{search=it},label={Text("Employee code, name or mobile")},singleLine=true,modifier=Modifier.weight(1f))
      if(search.isNotBlank())TextButton(onClick={search=""}){Text("CLEAR")}
     }
-    Row(horizontalArrangement=Arrangement.spacedBy(10.dp),modifier=Modifier.fillMaxWidth()){OutlinedButton(onClick={showNewEmpRegister=true;error=null},enabled=!registeringEmp,modifier=Modifier.weight(1f).height(54.dp)){Text("NEW EMP REGISTER")} OutlinedButton(onClick={showAddEmployee=true;error=null},enabled=!addingGuest,modifier=Modifier.weight(1f).height(54.dp)){Text("ADD EMPLOYEE")}}
+    Row(horizontalArrangement=Arrangement.spacedBy(10.dp),modifier=Modifier.fillMaxWidth()){
+     OutlinedButton(
+      onClick={showNewEmpRegister=true;error=null},
+      enabled=!registeringEmp,
+      modifier=Modifier.weight(1f).height(54.dp)
+     ){Text("NEW EMP REGISTER")}
+     OutlinedButton(
+      onClick={showAddEmployee=true;error=null},
+      enabled=!addingGuest,
+      modifier=Modifier.weight(1f).height(54.dp)
+     ){Text("ADD EMPLOYEE")}
+    }
     Text("NEW EMP REGISTER creates an employee. ADD EMPLOYEE creates a guest only.",style=MaterialTheme.typography.labelMedium)
     LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp),modifier=Modifier.weight(1f,false)){
      items(employees){e->OutlinedButton(onClick={selectedEmployee=e;error=null;summary=null;step=2;scope.launch{runCatching{repo.summary(e.id)}.onSuccess{summary=it}.onFailure{if(repo.isOnline())error=it.message?:"Unable to load employee summary."}}},modifier=Modifier.fillMaxWidth()){
