@@ -141,7 +141,7 @@ class MainActivity:ComponentActivity(){
   onDispose{lifecycleOwner.lifecycle.removeObserver(observer)}
  }
 
- Column(Modifier.fillMaxSize().padding(20.dp).verticalScroll(productScrollState),verticalArrangement=Arrangement.spacedBy(12.dp)){
+ Column((if(step==0) Modifier.fillMaxSize().padding(20.dp).verticalScroll(productScrollState) else Modifier.fillMaxSize().padding(20.dp)),verticalArrangement=Arrangement.spacedBy(12.dp)){
   Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){Text("HONEST MILK",style=MaterialTheme.typography.titleLarge);TextButton(onClick=onLogout){Text("LOG OUT")}}
   Text(when(step){0->"TAKE PRODUCTS";1->"SELECT EMPLOYEE";2->"CONFIRM";else->"DIGITAL RECEIPT"},style=MaterialTheme.typography.headlineMedium)
   if(offlineMode) Text("OFFLINE MODE — cached counter data is being used.",color=MaterialTheme.colorScheme.error)
