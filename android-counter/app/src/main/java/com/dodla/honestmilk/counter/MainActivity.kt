@@ -234,9 +234,9 @@ class MainActivity:ComponentActivity(){
       onClick={showAddEmployee=true;error=null},
       enabled=!addingGuest,
       modifier=Modifier.weight(1f).height(54.dp)
-     ){Text("ADD EMPLOYEE")}
+     ){Text("REGISTER AS GUEST")}
     }
-    Text("NEW EMP REGISTER creates an employee. ADD EMPLOYEE creates a guest only.",style=MaterialTheme.typography.labelMedium)
+    Text("NEW EMP REGISTER creates an employee. REGISTER AS GUEST creates a guest only.",style=MaterialTheme.typography.labelMedium)
     LazyColumn(verticalArrangement=Arrangement.spacedBy(8.dp),modifier=Modifier.weight(1f,false)){
      items(employees){e->OutlinedButton(onClick={selectedEmployee=e;error=null;summary=null;step=2;scope.launch{runCatching{repo.summary(e.id)}.onSuccess{summary=it}.onFailure{if(repo.isOnline())error=it.message?:"Unable to load employee summary."}}},modifier=Modifier.fillMaxWidth()){
       Column(Modifier.fillMaxWidth().padding(4.dp)){Text(e.name,style=MaterialTheme.typography.titleMedium);Text(e.identifier+" · "+e.department);Text(e.type,style=MaterialTheme.typography.labelSmall)}
@@ -272,7 +272,7 @@ class MainActivity:ComponentActivity(){
     if(showAddEmployee){
      AlertDialog(
       onDismissRequest={if(!addingGuest)showAddEmployee=false},
-      title={Text("ADD EMPLOYEE")},
+      title={Text("REGISTER AS GUEST")},
       text={
        Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
         Text("This will be added as a guest employee only.",style=MaterialTheme.typography.bodyMedium)
