@@ -61,5 +61,7 @@ class OfflineStore(context: Context) {
         prefs.edit().putString("pending_transactions", json.encodeToString(remaining)).apply()
     }
 
+    fun hasPending(id: String): Boolean = pendingTransactions().any { it.id == id }
+
     fun pendingCount(): Int = pendingTransactions().size
 }
