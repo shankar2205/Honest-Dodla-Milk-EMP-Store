@@ -15,11 +15,12 @@ import java.util.UUID
 @Serializable data class EmployeeRow(val id:String,val employee_code:String?=null,val guest_code:String?=null,val id_type:String,val name:String,val department:String?=null,val phone:String?=null,val active:Boolean=true)
 @Serializable data class ProfileRow(val id:String,val display_name:String,val role:String,val active:Boolean)
 @Serializable data class TransactionInsert(val id:String,val employee_id:String,val product_variant_id:String,val quantity:Int,val unit_price:Double,val operator_id:String,val transaction_at:String?=null)
-@Serializable data class TransactionHistoryRow(val quantity:Int,val unit_price:Double)
+@Serializable data class TransactionHistoryRow(val product_variant_id:String,val quantity:Int,val unit_price:Double)
 @Serializable data class SavedTransactionRow(val id:String,val transaction_at:String)
 @Serializable data class TransactionLine(val variantId:String,val quantity:Int,val unitPrice:Double)
 @Serializable data class SavedTransactionBatch(val rows:List<SavedTransactionRow>)
-@Serializable data class EmployeeSummary(val transactionCount:Int,val quantity:Int,val value:Double)
+@Serializable data class EmployeeVariantSummary(val variantId:String,val variantName:String,val quantity:Int,val value:Double)
+@Serializable data class EmployeeSummary(val transactionCount:Int,val quantity:Int,val value:Double,val variants:List<EmployeeVariantSummary> = emptyList())
 
 class CounterRepository(context: Context){
  private val supabase=SupabaseClientProvider.client
@@ -99,7 +100,12 @@ class CounterRepository(context: Context){
  suspend fun summary(employeeId:String):EmployeeSummary{
   return runCatching{
    val rows=supabase.from("transactions").select{filter{eq("employee_id",employeeId)}}.decodeList<TransactionHistoryRow>()
-   EmployeeSummary(rows.size,rows.sumOf{it.quantity},rows.sumOf{it.quantity*it.unit_price}).also{offline.saveSummary(employeeId,it)}
+   val variants=supabase.from("product_variants").select{filter{eq("active",true)}}.decodeList<VariantRow>().associateBy{it.id}
+   val grouped=rows.groupBy{it.product_variant_id}.mapNotNull{(variantId,items)->
+    val variant=variants[variantId] ?: return@mapNotNull null
+    EmployeeVariantSummary(variantId,variant.variant_name,items.sumOf{it.quantity},items.sumOf{it.quantity*it.unit_price})
+   }.sortedBy{it.variantName}
+   EmployeeSummary(rows.size,rows.sumOf{it.quantity},rows.sumOf{it.quantity*it.unit_price},grouped).also{offline.saveSummary(employeeId,it)}
   }.getOrElse{
    offline.loadSummary(employeeId) ?: throw it
   }
