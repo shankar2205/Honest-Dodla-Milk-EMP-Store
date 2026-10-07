@@ -41,8 +41,8 @@ private const val DAIRY_BG="https://images.unsplash.com/photo-1573731399281-6540
 private fun DairyBackground(tint:Color=Color(0xFF12344A)){
  Box(Modifier.fillMaxSize()){
   AsyncImage(model=DAIRY_BG,contentDescription="Dairy farm and cow background",modifier=Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
-  Box(Modifier.fillMaxSize().background(tint.copy(alpha=0.38f)))
-  Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.White.copy(alpha=0.20f),Color.Black.copy(alpha=0.12f)))))
+  Box(Modifier.fillMaxSize().background(tint.copy(alpha=0.32f)))
+  Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.White.copy(alpha=0.22f),Color.Black.copy(alpha=0.10f)))))
  }
 }
 
@@ -119,12 +119,12 @@ class MainActivity:ComponentActivity(){
    shape=MaterialTheme.shapes.extraLarge
   ){
    Column(Modifier.fillMaxWidth().padding(24.dp),verticalArrangement=Arrangement.spacedBy(16.dp),horizontalAlignment=Alignment.CenterHorizontally){
-    Text("HONEST MILK",color=Color(0xFF12304A),style=MaterialTheme.typography.headlineLarge.copy(letterSpacing=2.sp))
-    Text("DODLA EMPLOYEE STORE",color=Color(0xFFB66A00),style=MaterialTheme.typography.labelLarge.copy(letterSpacing=1.8.sp))
+    Text("HONEST MILK",color=Color(0xFF12304A),style=MaterialTheme.typography.headlineLarge.copy(letterSpacing=2.sp,fontWeight=FontWeight.ExtraBold))
+    Text("DODLA EMPLOYEE STORE",color=Color(0xFFB66A00),style=MaterialTheme.typography.labelLarge.copy(letterSpacing=1.8.sp,fontWeight=FontWeight.Bold))
     HorizontalDivider()
     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(4.dp)){
-     Text("COUNTER LOGIN",color=Color(0xFF12304A),style=MaterialTheme.typography.headlineSmall.copy(letterSpacing=1.2.sp))
-     Text("Sign in to start serving employees and guests.",color=Color(0xFF33485C),style=MaterialTheme.typography.bodyMedium)
+     Text("COUNTER LOGIN",color=Color(0xFF12304A),style=MaterialTheme.typography.headlineSmall.copy(letterSpacing=1.2.sp,fontWeight=FontWeight.ExtraBold))
+     Text("Sign in to start serving employees and guests.",color=Color(0xFF41566B),style=MaterialTheme.typography.bodyMedium)
     }
     OutlinedTextField(email,{email=it},label={Text("Email")},placeholder={Text("Enter your email")},singleLine=true,enabled=!loading,modifier=Modifier.fillMaxWidth())
     OutlinedTextField(password,{password=it},label={Text("Password")},placeholder={Text("Enter your password")},singleLine=true,enabled=!loading,visualTransformation=PasswordVisualTransformation(),modifier=Modifier.fillMaxWidth())
@@ -239,14 +239,12 @@ class MainActivity:ComponentActivity(){
  }
 
  Box(Modifier.fillMaxSize()){
-  DairyBackground(
-   when(step){
-    0->Color(0xFF0A5260)
-    1->Color(0xFF4C3A75)
-    2->Color(0xFF70402B)
-    else->Color(0xFF17604C)
-   }
-  )
+  DairyBackground(when(step){
+   0->Color(0xFF0A5260)
+   1->Color(0xFF4C3A75)
+   2->Color(0xFF70402B)
+   else->Color(0xFF17604C)
+  })
   Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=0.10f)))
  Column(Modifier.fillMaxSize().padding(horizontal=16.dp,vertical=14.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
   Card(
