@@ -7,8 +7,11 @@ import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
+import io.github.jan.supabase.postgrest.result.decodeSingle
 import io.github.jan.supabase.postgrest.from
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import kotlinx.serialization.SerialName
 import java.util.UUID
 
@@ -76,11 +79,11 @@ class CounterRepository(context: Context){
   require(name.trim().isNotBlank()){"Guest name is required."}
   return supabase.postgrest.rpc(
    "create_guest_employee",
-   GuestEmployeeCreateParams(
-    pName=name.trim(),
-    pPhone=phone.trim().ifBlank{null},
-    pDepartment=department.trim().ifBlank{null}
-   )
+   buildJsonObject {
+    put("p_name",name.trim())
+    put("p_phone",phone.trim().ifBlank{null})
+    put("p_department",department.trim().ifBlank{null})
+   }
   ).decodeSingle<EmployeeRow>()
  }
 
@@ -89,7 +92,12 @@ class CounterRepository(context: Context){
   require(name.trim().isNotBlank()){"Employee name is required."}
   return supabase.postgrest.rpc(
    "create_employee",
-   EmployeeCreateParams(code.trim(),name.trim(),phone.trim().ifBlank{null},department.trim().ifBlank{null})
+   buildJsonObject {
+    put("p_employee_code",code.trim())
+    put("p_name",name.trim())
+    put("p_phone",phone.trim().ifBlank{null})
+    put("p_department",department.trim().ifBlank{null})
+   }
   ).decodeSingle<EmployeeRow>()
  }
 
