@@ -8,6 +8,7 @@ import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
@@ -178,31 +179,60 @@ class MainActivity:ComponentActivity(){
   error?.let{Text(it,color=MaterialTheme.colorScheme.error)}
   when(step){
    0->{
-    Text("SELECT PRODUCTS",style=MaterialTheme.typography.titleLarge)
+    Text("PRODUCT CATALOGUE",style=MaterialTheme.typography.titleLarge)
+    Text("Tap a product to add quickly. Adjust quantity with − / +.",style=MaterialTheme.typography.bodyMedium)
     if(loading)CircularProgressIndicator()
-    products.forEach{p->
-     val q=productQuantities[p.id]?:0
-     OutlinedCard(Modifier.fillMaxWidth()){
-      Row(Modifier.fillMaxWidth().padding(12.dp),verticalAlignment=Alignment.CenterVertically){
-       Column(Modifier.weight(1f)){
-        Text(p.name+" — "+p.variant,style=MaterialTheme.typography.titleMedium)
-        Text("₹"+String.format("%.2f",p.price))
-       }
-       Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){
-        FilledTonalButton(onClick={
-         productQuantities=productQuantities.toMutableMap().apply{put(p.id,maxOf(0,(this[p.id]?:0)-1))}
-        },enabled=q>0){Text("−")}
-        Text(q.toString(),style=MaterialTheme.typography.titleLarge)
-        FilledTonalButton(onClick={
-         productQuantities=productQuantities.toMutableMap().apply{put(p.id,(this[p.id]?:0)+1)}
-        }){Text("+")}
+    BoxWithConstraints(Modifier.fillMaxWidth()){
+     val columns=if(maxWidth<600.dp)2 else 4
+     val rows=products.chunked(columns)
+     Column(verticalArrangement=Arrangement.spacedBy(14.dp)){
+      rows.forEach{row->
+       Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(14.dp)){
+        row.forEach{p->
+         val q=productQuantities[p.id]?:0
+         ElevatedCard(
+          modifier=Modifier.weight(1f).aspectRatio(1f).clickable{
+           productQuantities=productQuantities.toMutableMap().apply{put(p.id,(this[p.id]?:0)+1)}
+          },
+          elevation=CardDefaults.elevatedCardElevation(defaultElevation=6.dp)
+         ){
+          Column(
+           Modifier.fillMaxSize().padding(14.dp),
+           verticalArrangement=Arrangement.SpaceBetween,
+           horizontalAlignment=Alignment.CenterHorizontally
+          ){
+           Column(horizontalAlignment=Alignment.CenterHorizontally){
+            Text(p.name,style=MaterialTheme.typography.titleLarge,textAlign=androidx.compose.ui.text.style.TextAlign.Center)
+            Text(p.variant,style=MaterialTheme.typography.titleMedium,textAlign=androidx.compose.ui.text.style.TextAlign.Center)
+           }
+           Text("₹"+String.format("%.2f",p.price),style=MaterialTheme.typography.headlineSmall)
+           Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
+            FilledTonalButton(onClick={
+             productQuantities=productQuantities.toMutableMap().apply{put(p.id,maxOf(0,(this[p.id]?:0)-1))}
+            },enabled=q>0,contentPadding=PaddingValues(horizontal=12.dp)){Text("−")}
+            Text(q.toString(),style=MaterialTheme.typography.headlineSmall)
+            FilledTonalButton(onClick={
+             productQuantities=productQuantities.toMutableMap().apply{put(p.id,(this[p.id]?:0)+1)}
+            },contentPadding=PaddingValues(horizontal=12.dp)){Text("+")}
+           }
+          }
+         }
+        }
+        repeat(columns-row.size){
+         Spacer(Modifier.weight(1f).aspectRatio(1f))
+        }
        }
       }
      }
     }
     val selectedCount=productQuantities.values.sum()
     if(selectedCount>0){
-     Text("Selected quantity: "+selectedCount,style=MaterialTheme.typography.titleMedium)
+     Card(Modifier.fillMaxWidth()){
+      Row(Modifier.fillMaxWidth().padding(14.dp),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
+       Column{Text("SELECTED ITEMS",style=MaterialTheme.typography.labelLarge);Text("$selectedCount units",style=MaterialTheme.typography.titleLarge)}
+       Button(onClick={addSelectedProductsToCart()}){Text("ADD TO CART")}
+      }
+     }
      Button(onClick={addSelectedProductsToCart()},modifier=Modifier.fillMaxWidth().height(56.dp)){Text("ADD TO CART")}
     }
     if(cart.isNotEmpty()){
