@@ -25,12 +25,12 @@ class CounterRepository(context: Context){
  private val supabase=SupabaseClientProvider.client
  private val offline=OfflineStore(context)
  private val appContext=context.applicationContext
- fun isOnline():Boolean {
+ fun isOnline():Boolean = runCatching {
   val cm=appContext.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
   val network=cm.activeNetwork ?: return false
   val caps=cm.getNetworkCapabilities(network) ?: return false
-  return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
- }
+  caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+ }.getOrDefault(false)
 
  suspend fun sessionExists():Boolean=supabase.auth.currentUserOrNull()!=null
  suspend fun signIn(email:String,password:String){
