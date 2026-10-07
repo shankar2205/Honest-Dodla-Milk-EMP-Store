@@ -277,26 +277,53 @@ class MainActivity:ComponentActivity(){
     }
     val selectedCount=productQuantities.values.sum()
     if(selectedCount>0){
-     Card(Modifier.fillMaxWidth()){
-      Row(Modifier.fillMaxWidth().padding(14.dp),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
-       Column{Text("SELECTED ITEMS",style=MaterialTheme.typography.labelLarge);Text("$selectedCount units",style=MaterialTheme.typography.titleLarge)}
-       Button(onClick={addSelectedProductsToCart()}){Text("ADD TO CART")}
+     Card(
+      Modifier.fillMaxWidth(),
+      colors=CardDefaults.cardColors(containerColor=MaterialTheme.colorScheme.secondaryContainer),
+      elevation=CardDefaults.cardElevation(defaultElevation=3.dp)
+     ){
+      Column(Modifier.fillMaxWidth().padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
+       Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
+        Column{Text("SELECTED ITEMS",style=MaterialTheme.typography.labelLarge);Text("$selectedCount units",style=MaterialTheme.typography.titleLarge)}
+        Text("Ready to add",style=MaterialTheme.typography.labelMedium)
+       }
+       Button(onClick={addSelectedProductsToCart()},modifier=Modifier.fillMaxWidth().height(56.dp)){
+        Text("ADD TO CART",style=MaterialTheme.typography.titleMedium)
+       }
       }
      }
-     Button(onClick={addSelectedProductsToCart()},modifier=Modifier.fillMaxWidth().height(56.dp)){Text("ADD TO CART")}
     }
     if(cart.isNotEmpty()){
-     HorizontalDivider()
-     Text("CURRENT CART",style=MaterialTheme.typography.labelLarge)
-     cart.forEachIndexed{index,line->
-      Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
-       Column(Modifier.weight(1f)){Text(line.product.name+" — "+line.product.variant);Text("₹"+String.format("%.2f",line.product.price)+" × "+line.quantity)}
-       Text("₹"+String.format("%.2f",line.product.price*line.quantity))
-       TextButton(onClick={cart=cart.filterIndexed{i,_->i!=index}}){Text("REMOVE")}
+     Card(Modifier.fillMaxWidth(),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
+      Column(Modifier.fillMaxWidth().padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
+       Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
+        Text("CURRENT CART",style=MaterialTheme.typography.titleLarge)
+        Text(cart.sumOf{it.quantity}.toString()+" units",style=MaterialTheme.typography.labelLarge)
+       }
+       cart.forEachIndexed{index,line->
+        Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.small,color=MaterialTheme.colorScheme.surfaceVariant){
+         Row(Modifier.fillMaxWidth().padding(12.dp),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
+          Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(2.dp)){
+           Text(line.product.name,style=MaterialTheme.typography.titleMedium)
+           Text(line.product.variant+" · ₹"+String.format("%.2f",line.product.price)+" × "+line.quantity,style=MaterialTheme.typography.bodyMedium)
+          }
+          Column(horizontalAlignment=Alignment.End){
+           Text("₹"+String.format("%.2f",line.product.price*line.quantity),style=MaterialTheme.typography.titleMedium)
+           TextButton(onClick={cart=cart.filterIndexed{i,_->i!=index}}){Text("REMOVE")}
+          }
+         }
+        }
+       }
+       HorizontalDivider()
+       Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
+        Text("CART TOTAL",style=MaterialTheme.typography.titleMedium)
+        Text("₹"+String.format("%.2f",cartTotal()),style=MaterialTheme.typography.headlineSmall)
+       }
+       Button(onClick={step=1},modifier=Modifier.fillMaxWidth().height(60.dp)){
+        Text("NEXT — SELECT PERSON",style=MaterialTheme.typography.titleMedium)
+       }
       }
      }
-     Text("Cart total ₹"+String.format("%.2f",cartTotal()),style=MaterialTheme.typography.titleLarge)
-     Button(onClick={step=1},modifier=Modifier.fillMaxWidth().height(56.dp)){Text("NEXT")}
     }
    }
    1->{
@@ -374,7 +401,7 @@ class MainActivity:ComponentActivity(){
     TextButton(onClick={step=0},modifier=Modifier.fillMaxWidth()){Text("BACK TO PRODUCTS")}
     if(showNewEmpRegister){
      AlertDialog(onDismissRequest={if(!registeringEmp)showNewEmpRegister=false},title={Text("NEW EMP REGISTER")},text={
-      Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
+      Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(10.dp)){
        Text("This will be registered as an employee, not a guest.",style=MaterialTheme.typography.bodyMedium)
        OutlinedTextField(newEmpCode,{newEmpCode=it},label={Text("Employee ID *")},singleLine=true,enabled=!registeringEmp,modifier=Modifier.fillMaxWidth())
        OutlinedTextField(newEmpName,{newEmpName=it},label={Text("Name *")},singleLine=true,enabled=!registeringEmp,modifier=Modifier.fillMaxWidth())
@@ -382,7 +409,7 @@ class MainActivity:ComponentActivity(){
        OutlinedTextField(newEmpDepartment,{newEmpDepartment=it},label={Text("Department (optional)")},singleLine=true,enabled=!registeringEmp,modifier=Modifier.fillMaxWidth())
       }
      },confirmButton={
-      Button(enabled=!registeringEmp&&newEmpCode.trim().isNotBlank()&&newEmpName.trim().isNotBlank()&&repo.isOnline(),onClick={
+      Button(modifier=Modifier.height(52.dp),enabled=!registeringEmp&&newEmpCode.trim().isNotBlank()&&newEmpName.trim().isNotBlank()&&repo.isOnline(),onClick={
        registeringEmp=true;error=null
        scope.launch{
         runCatching{repo.createEmployee(newEmpCode,newEmpName,newEmpPhone,newEmpDepartment)}
@@ -403,7 +430,7 @@ class MainActivity:ComponentActivity(){
       onDismissRequest={if(!addingGuest)showAddEmployee=false},
       title={Text("REGISTER AS GUEST")},
       text={
-       Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
+       Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(10.dp)){
         Text("This will be added as a guest employee only.",style=MaterialTheme.typography.bodyMedium)
         OutlinedTextField(newGuestName,{newGuestName=it},label={Text("Name *")},singleLine=true,enabled=!addingGuest,modifier=Modifier.fillMaxWidth())
         OutlinedTextField(newGuestPhone,{newGuestPhone=it},label={Text("Mobile (optional)")},singleLine=true,enabled=!addingGuest,modifier=Modifier.fillMaxWidth())
@@ -411,7 +438,7 @@ class MainActivity:ComponentActivity(){
        }
       },
       confirmButton={
-       Button(enabled=!addingGuest&&newGuestName.trim().isNotBlank()&&repo.isOnline(),onClick={
+       Button(modifier=Modifier.height(52.dp),enabled=!addingGuest&&newGuestName.trim().isNotBlank()&&repo.isOnline(),onClick={
         addingGuest=true
         error=null
         scope.launch{
