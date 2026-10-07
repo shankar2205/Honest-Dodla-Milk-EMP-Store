@@ -272,10 +272,15 @@ class MainActivity:ComponentActivity(){
    }
   }
   if(step==0){
-   Card(Modifier.fillMaxWidth()){
-    Column(Modifier.fillMaxWidth().padding(14.dp),verticalArrangement=Arrangement.spacedBy(2.dp)){
-     Text(greeting+"!",style=MaterialTheme.typography.headlineSmall)
-     Text(currentDateTime,style=MaterialTheme.typography.bodyMedium)
+   Card(
+    Modifier.fillMaxWidth(),
+    colors=CardDefaults.cardColors(containerColor=Cream),
+    border=androidx.compose.foundation.BorderStroke(1.dp,Border),
+    elevation=CardDefaults.cardElevation(defaultElevation=5.dp)
+   ){
+    Column(Modifier.fillMaxWidth().padding(14.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
+     Text(greeting+"!",color=Ink,style=MaterialTheme.typography.headlineSmall.copy(fontWeight=FontWeight.ExtraBold))
+     Text(currentDateTime,color=Ink.copy(alpha=0.82f),style=MaterialTheme.typography.bodyMedium.copy(fontWeight=FontWeight.SemiBold))
     }
    }
   }
@@ -689,27 +694,28 @@ class MainActivity:ComponentActivity(){
   Surface(
    Modifier.fillMaxWidth().padding(top=2.dp),
    shape=MaterialTheme.shapes.extraLarge,
-   color=Ink,
+   color=Cream,
+   border=androidx.compose.foundation.BorderStroke(1.dp,Border),
    tonalElevation=0.dp,
-   shadowElevation=18.dp
+   shadowElevation=12.dp
   ){
    when(step){
     0->Button(
-     colors=ButtonDefaults.buttonColors(containerColor=Gold,contentColor=Color.White),
-     border=androidx.compose.foundation.BorderStroke(2.dp,Color.White.copy(alpha=0.7f)),
+     colors=ButtonDefaults.buttonColors(containerColor=Gold,contentColor=Color.White,disabledContainerColor=Color(0xFFD9E1E4),disabledContentColor=Ink.copy(alpha=0.72f)),
+     border=androidx.compose.foundation.BorderStroke(2.dp,Gold),
      onClick={step=1},
      enabled=cart.isNotEmpty(),
      modifier=Modifier.fillMaxWidth().height(64.dp)
     ){Text("NEXT — SELECT PERSON",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold,letterSpacing=0.7.sp))}
     1->OutlinedButton(
-     colors=ButtonDefaults.outlinedButtonColors(contentColor=Ink),
+     colors=ButtonDefaults.outlinedButtonColors(containerColor=WhiteCard,contentColor=Ink,disabledContainerColor=WhiteCard,disabledContentColor=Ink.copy(alpha=0.5f)),
      border=androidx.compose.foundation.BorderStroke(2.dp,Gold),
      onClick={step=0},
      modifier=Modifier.fillMaxWidth().height(60.dp)
     ){Text("BACK TO PRODUCTS",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))}
     2->Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){
      OutlinedButton(colors=ButtonDefaults.outlinedButtonColors(contentColor=Ink),border=androidx.compose.foundation.BorderStroke(2.dp,Gold),onClick={step=0},enabled=!saving,modifier=Modifier.weight(1f).height(60.dp)){Text("BACK",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))}
-     Button(colors=ButtonDefaults.buttonColors(containerColor=Teal,contentColor=Color.White),border=androidx.compose.foundation.BorderStroke(2.dp,Color.White.copy(alpha=0.65f)),
+     Button(colors=ButtonDefaults.buttonColors(containerColor=Teal,contentColor=Color.White,disabledContainerColor=Color(0xFFD9E1E4),disabledContentColor=Ink.copy(alpha=0.72f)),border=androidx.compose.foundation.BorderStroke(2.dp,Teal),
       enabled=!saving,
       onClick={
        saving=true;error=null
