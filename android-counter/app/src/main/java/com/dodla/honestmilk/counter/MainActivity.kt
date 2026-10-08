@@ -351,9 +351,13 @@ class MainActivity:ComponentActivity(){
            }
            Text("₹"+String.format("%.2f",p.price),style=MaterialTheme.typography.headlineSmall)
            Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
-            FilledTonalButton(onClick={productQuantities=productQuantities.toMutableMap().apply{put(p.id,maxOf(0,(this[p.id]?:0)-1))}},enabled=q>0,colors=ButtonDefaults.filledTonalButtonColors(containerColor=TealPale,contentColor=Teal,disabledContainerColor=TealPale.copy(alpha=0.55f),disabledContentColor=Teal.copy(alpha=0.45f)),border=androidx.compose.foundation.BorderStroke(1.5.dp,Teal),contentPadding=PaddingValues(horizontal=8.dp,vertical=3.dp),modifier=Modifier.height(36.dp)){Text("−",style=MaterialTheme.typography.titleMedium)}
+            FilledTonalButton(onClick={
+             productQuantities=productQuantities.toMutableMap().apply{put(p.id,maxOf(0,(this[p.id]?:0)-1))}
+            },enabled=q>0,colors=ButtonDefaults.filledTonalButtonColors(containerColor=TealPale,contentColor=Teal,disabledContainerColor=TealPale.copy(alpha=0.55f),disabledContentColor=Teal.copy(alpha=0.45f)),border=androidx.compose.foundation.BorderStroke(1.5.dp,Teal),contentPadding=PaddingValues(horizontal=8.dp,vertical=3.dp),modifier=Modifier.height(36.dp)){Text("−",style=MaterialTheme.typography.titleMedium)}
             Text(animatedQ.toString(),style=MaterialTheme.typography.titleLarge.copy(fontWeight=FontWeight.ExtraBold))
-            FilledTonalButton(onClick={productQuantities=productQuantities.toMutableMap().apply{put(p.id,(this[p.id]?:0)+1)}},colors=ButtonDefaults.filledTonalButtonColors(containerColor=Teal,contentColor=Color.White),border=androidx.compose.foundation.BorderStroke(1.5.dp,Teal),contentPadding=PaddingValues(horizontal=10.dp,vertical=3.dp),modifier=Modifier.height(38.dp)){Text("+",style=MaterialTheme.typography.titleMedium)}
+            FilledTonalButton(onClick={
+             productQuantities=productQuantities.toMutableMap().apply{put(p.id,(this[p.id]?:0)+1)}
+            },colors=ButtonDefaults.filledTonalButtonColors(containerColor=Teal,contentColor=Color.White),border=androidx.compose.foundation.BorderStroke(1.5.dp,Teal),contentPadding=PaddingValues(horizontal=10.dp,vertical=3.dp),modifier=Modifier.height(38.dp)){Text("+",style=MaterialTheme.typography.titleMedium)}
            }
           }
          }
@@ -714,3 +718,104 @@ class MainActivity:ComponentActivity(){
    verticalArrangement=Arrangement.spacedBy(6.dp)
   ){
    when(step){
+    0->Button(
+     colors=ButtonDefaults.buttonColors(containerColor=Teal,contentColor=Color.White,disabledContainerColor=Color(0xFFD9E1E4),disabledContentColor=Ink.copy(alpha=0.72f)),
+     border=androidx.compose.foundation.BorderStroke(2.dp,if(cart.isNotEmpty()) Teal else Border),
+     onClick={step=1},
+     enabled=cart.isNotEmpty(),
+     modifier=Modifier.fillMaxWidth().height(50.dp)
+    ){Text("NEXT — SELECT PERSON",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold,letterSpacing=0.5.sp))}
+    1->OutlinedButton(
+     colors=ButtonDefaults.outlinedButtonColors(containerColor=WhiteCard,contentColor=Teal),
+     border=androidx.compose.foundation.BorderStroke(2.dp,Teal),
+     onClick={step=0},
+     modifier=Modifier.fillMaxWidth().height(48.dp)
+    ){Text("BACK TO PRODUCTS",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))}
+    2->Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+     OutlinedButton(
+      colors=ButtonDefaults.outlinedButtonColors(containerColor=WhiteCard,contentColor=Teal),
+      border=androidx.compose.foundation.BorderStroke(2.dp,Teal),
+      onClick={step=0},
+      enabled=!saving,
+      modifier=Modifier.weight(0.75f).height(44.dp)
+     ){Text("BACK",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))}
+     Button(
+      colors=ButtonDefaults.buttonColors(containerColor=Teal,contentColor=Color.White,disabledContainerColor=Color(0xFFD9E1E4),disabledContentColor=Ink.copy(alpha=0.72f)),
+      border=androidx.compose.foundation.BorderStroke(2.dp,Teal),
+      enabled=!saving,
+      onClick={
+       saving=true;error=null
+       scope.launch{
+        runCatching{repo.save(selectedEmployee!!.id,cart.map{TransactionLine(it.product.id,it.quantity,it.product.price)})}
+         .onSuccess{saved->
+          val pending=saved.any{repo.isPending(it.id)}
+          receipt=SavedReceipt(saved.map{it.id},selectedEmployee!!,cart,cartTotal(),summary?.quantity?:0,summary?.value?:0.0,saved.firstOrNull()?.transaction_at?:"",pending)
+          pendingCount=repo.pendingCount()
+          offlineMode=pending||!repo.isOnline()
+          step=3
+         }
+         .onFailure{error=it.message?:"Unable to save transaction."}
+        saving=false
+       }
+      },
+      modifier=Modifier.weight(1.35f).height(44.dp)
+     ){Text(if(saving)"SAVING..." else "CONFIRM & FINISH",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))}
+    }
+    else->Column(verticalArrangement=Arrangement.spacedBy(6.dp)){
+     Button(
+      colors=ButtonDefaults.buttonColors(containerColor=Teal,contentColor=Color.White),
+      border=androidx.compose.foundation.BorderStroke(2.dp,Teal),
+      onClick={onShare(buildReceiptText(receipt!!))},
+      modifier=Modifier.fillMaxWidth().height(48.dp)
+     ){Text("SHARE DIGITAL RECEIPT",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))}
+     Button(
+      colors=ButtonDefaults.buttonColors(containerColor=Teal,contentColor=Color.White),
+      border=androidx.compose.foundation.BorderStroke(2.dp,Teal),
+      onClick={cart=emptyList();selectedProduct=null;selectedEmployee=null;quantity=1;productQuantities=emptyMap();search="";summary=null;receipt=null;error=null;step=0},
+      modifier=Modifier.fillMaxWidth().height(48.dp)
+     ){Text("NEW TRANSACTION",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))}
+    }
+   }
+  }
+ }
+}
+}
+}
+data class CartLine(val product:Product,val quantity:Int)
+data class SavedReceipt(val ids:List<String>,val employee:Employee,val lines:List<CartLine>,val total:Double,val previousQuantity:Int,val previousValue:Double,val transactionAt:String,val pending:Boolean)
+
+fun buildReceiptText(r:SavedReceipt):String{
+ return buildString{
+  appendLine("HONEST MILK - DODLA EMPLOYEE STORE")
+  appendLine()
+  appendLine("Digital Receipt")
+  appendLine("Day: "+formatReceiptDay(r.transactionAt))
+  appendLine("Date: "+formatReceiptDate(r.transactionAt))
+  appendLine("Time: "+formatReceiptTime(r.transactionAt))
+  appendLine()
+  appendLine("Employee: "+r.employee.name)
+  appendLine("Employee ID: "+r.employee.identifier)
+  appendLine()
+  r.lines.forEach{
+   appendLine(it.product.name+" - "+it.product.variant+" x "+it.quantity)
+   appendLine("Unit price: ₹"+String.format("%.2f",it.product.price))
+   appendLine("Line total: ₹"+String.format("%.2f",it.product.price*it.quantity))
+  }
+  appendLine()
+  appendLine("Total bill: ₹"+String.format("%.2f",r.total))
+  appendLine()
+  appendLine("Consumption till today:")
+  appendLine("Quantity: "+(r.previousQuantity+r.lines.sumOf{it.quantity}))
+  appendLine("Bill value: ₹"+String.format("%.2f",r.previousValue+r.total))
+ }
+}
+
+
+fun formatLocalDateTime(instantText:String):String = runCatching {
+ val z=Instant.parse(instantText).atZone(ZoneId.systemDefault())
+ z.format(DateTimeFormatter.ofPattern("EEEE, dd MMMM yyyy · hh:mm a",Locale.getDefault()))
+}.getOrDefault(instantText)
+fun formatReceiptDay(instantText:String):String = runCatching { Instant.parse(instantText).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("EEEE",Locale.getDefault())) }.getOrDefault("—")
+fun formatReceiptDate(instantText:String):String = runCatching { Instant.parse(instantText).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("dd MMMM yyyy",Locale.getDefault())) }.getOrDefault("—")
+fun formatReceiptTime(instantText:String):String = runCatching { Instant.parse(instantText).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("hh:mm:ss a",Locale.getDefault())) }.getOrDefault("—")
+fun greetingForHour(hour:Int):String = when(hour){in 5..11->"Good Morning";in 12..16->"Good Afternoon";in 17..20->"Good Evening";else->"Good Night"}
