@@ -315,7 +315,7 @@ class MainActivity:ComponentActivity(){
   Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)){
   when(step){   0->{
     Text("PRODUCT CATALOGUE",style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.Serif,letterSpacing=0.8.sp))
-    Text("Tap a product to add quickly. Adjust quantity with − / +.",style=MaterialTheme.typography.bodyMedium)
+    Text("Use + or − to adjust quantity. Tap only the controls.",style=MaterialTheme.typography.bodyMedium)
     if(loading)CircularProgressIndicator()
     BoxWithConstraints(Modifier.fillMaxWidth()){
      val columns=if(maxWidth<600.dp)2 else 4
@@ -327,9 +327,7 @@ class MainActivity:ComponentActivity(){
          val q=productQuantities[p.id]?:0
          ElevatedCard(
           colors=CardDefaults.elevatedCardColors(containerColor=WhiteCard),
-          modifier=Modifier.border(1.dp,if(q>0) Gold else Border,MaterialTheme.shapes.medium).weight(1f).aspectRatio(1.18f).clickable{
-           productQuantities=productQuantities.toMutableMap().apply{put(p.id,(this[p.id]?:0)+1)}
-          },
+          modifier=Modifier.border(1.dp,if(q>0) Gold else Border,MaterialTheme.shapes.medium).weight(1f).aspectRatio(1.18f),
           elevation=CardDefaults.elevatedCardElevation(defaultElevation=6.dp)
          ){
           Column(
@@ -345,11 +343,11 @@ class MainActivity:ComponentActivity(){
            Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
             FilledTonalButton(onClick={
              productQuantities=productQuantities.toMutableMap().apply{put(p.id,maxOf(0,(this[p.id]?:0)-1))}
-            },enabled=q>0,contentPadding=PaddingValues(horizontal=9.dp,vertical=5.dp)){Text("−")}
+            },enabled=q>0,contentPadding=PaddingValues(horizontal=8.dp,vertical=3.dp),modifier=Modifier.height(38.dp)){Text("−",style=MaterialTheme.typography.titleMedium)}
             Text(q.toString(),style=MaterialTheme.typography.titleLarge.copy(fontWeight=FontWeight.ExtraBold))
             FilledTonalButton(onClick={
              productQuantities=productQuantities.toMutableMap().apply{put(p.id,(this[p.id]?:0)+1)}
-            },contentPadding=PaddingValues(horizontal=12.dp)){Text("+")}
+            },contentPadding=PaddingValues(horizontal=10.dp,vertical=3.dp),modifier=Modifier.height(38.dp)){Text("+",style=MaterialTheme.typography.titleMedium)}
            }
           }
          }
@@ -422,6 +420,17 @@ class MainActivity:ComponentActivity(){
        label={Text("Search employee ID, name or mobile")},
        placeholder={Text("Start typing to find someone")},
        singleLine=true,
+       colors=OutlinedTextFieldDefaults.colors(
+        focusedTextColor=Ink,
+        unfocusedTextColor=Ink,
+        focusedLabelColor=Teal,
+        unfocusedLabelColor=Ink,
+        focusedPlaceholderColor=Ink.copy(alpha=0.62f),
+        unfocusedPlaceholderColor=Ink.copy(alpha=0.62f),
+        focusedBorderColor=Teal,
+        unfocusedBorderColor=Border,
+        cursorColor=Teal
+       ),
        modifier=Modifier.fillMaxWidth()
       )
       if(search.isNotBlank()){
@@ -495,7 +504,7 @@ class MainActivity:ComponentActivity(){
        OutlinedTextField(newEmpDepartment,{newEmpDepartment=it},colors=OutlinedTextFieldDefaults.colors(focusedTextColor=Ink,unfocusedTextColor=Ink,focusedLabelColor=Teal,unfocusedLabelColor=Ink,focusedBorderColor=Teal,unfocusedBorderColor=Border),label={Text("Department (optional)",color=Ink)},singleLine=true,enabled=!registeringEmp,modifier=Modifier.fillMaxWidth())
       }
      },confirmButton={
-      Button(modifier=Modifier.height(52.dp),enabled=!registeringEmp&&newEmpCode.trim().isNotBlank()&&newEmpName.trim().isNotBlank()&&repo.isOnline(),onClick={
+      Button(modifier=Modifier.height(46.dp),enabled=!registeringEmp&&newEmpCode.trim().isNotBlank()&&newEmpName.trim().isNotBlank()&&repo.isOnline(),onClick={
        registeringEmp=true;error=null
        scope.launch{
         runCatching{repo.createEmployee(newEmpCode,newEmpName,newEmpPhone,newEmpDepartment)}
@@ -527,7 +536,7 @@ class MainActivity:ComponentActivity(){
        }
       },
       confirmButton={
-       Button(modifier=Modifier.height(52.dp),enabled=!addingGuest&&newGuestName.trim().isNotBlank()&&repo.isOnline(),onClick={
+       Button(modifier=Modifier.height(46.dp),enabled=!addingGuest&&newGuestName.trim().isNotBlank()&&repo.isOnline(),onClick={
         addingGuest=true
         error=null
         scope.launch{
@@ -694,31 +703,35 @@ class MainActivity:ComponentActivity(){
    }
   }
 
-  Surface(
+  Column(
    Modifier.fillMaxWidth().padding(top=3.dp),
-   shape=MaterialTheme.shapes.large,
-   color=Cream,
-   border=androidx.compose.foundation.BorderStroke(1.dp,Border),
-   tonalElevation=0.dp,
-   shadowElevation=6.dp
+   verticalArrangement=Arrangement.spacedBy(6.dp)
   ){
    when(step){
     0->Button(
      colors=ButtonDefaults.buttonColors(containerColor=Gold,contentColor=Color.White,disabledContainerColor=Color(0xFFD9E1E4),disabledContentColor=Ink.copy(alpha=0.72f)),
-     border=androidx.compose.foundation.BorderStroke(2.dp,Gold),
+     border=androidx.compose.foundation.BorderStroke(2.dp,if(cart.isNotEmpty()) Gold else Border),
      onClick={step=1},
      enabled=cart.isNotEmpty(),
-     modifier=Modifier.fillMaxWidth().height(52.dp)
-    ){Text("NEXT — SELECT PERSON",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold,letterSpacing=0.7.sp))}
+     modifier=Modifier.fillMaxWidth().height(50.dp)
+    ){Text("NEXT — SELECT PERSON",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold,letterSpacing=0.5.sp))}
     1->OutlinedButton(
-     colors=ButtonDefaults.outlinedButtonColors(containerColor=WhiteCard,contentColor=Ink,disabledContainerColor=WhiteCard,disabledContentColor=Ink.copy(alpha=0.5f)),
+     colors=ButtonDefaults.outlinedButtonColors(containerColor=WhiteCard,contentColor=Ink),
      border=androidx.compose.foundation.BorderStroke(2.dp,Gold),
      onClick={step=0},
-     modifier=Modifier.fillMaxWidth().height(60.dp)
+     modifier=Modifier.fillMaxWidth().height(48.dp)
     ){Text("BACK TO PRODUCTS",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))}
-    2->Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){
-     OutlinedButton(colors=ButtonDefaults.outlinedButtonColors(contentColor=Ink),border=androidx.compose.foundation.BorderStroke(2.dp,Gold),onClick={step=0},enabled=!saving,modifier=Modifier.weight(1f).height(50.dp)){Text("BACK",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))}
-     Button(colors=ButtonDefaults.buttonColors(containerColor=Teal,contentColor=Color.White,disabledContainerColor=Color(0xFFD9E1E4),disabledContentColor=Ink.copy(alpha=0.72f)),border=androidx.compose.foundation.BorderStroke(2.dp,Teal),
+    2->Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+     OutlinedButton(
+      colors=ButtonDefaults.outlinedButtonColors(containerColor=WhiteCard,contentColor=Ink),
+      border=androidx.compose.foundation.BorderStroke(2.dp,Gold),
+      onClick={step=0},
+      enabled=!saving,
+      modifier=Modifier.weight(0.85f).height(48.dp)
+     ){Text("BACK",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))}
+     Button(
+      colors=ButtonDefaults.buttonColors(containerColor=Teal,contentColor=Color.White,disabledContainerColor=Color(0xFFD9E1E4),disabledContentColor=Ink.copy(alpha=0.72f)),
+      border=androidx.compose.foundation.BorderStroke(2.dp,Teal),
       enabled=!saving,
       onClick={
        saving=true;error=null
@@ -735,27 +748,26 @@ class MainActivity:ComponentActivity(){
         saving=false
        }
       },
-      modifier=Modifier.weight(1.6f).height(52.dp)
-     ){Text(if(saving)"SAVING..." else "CONFIRM & FINISH",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold,letterSpacing=0.5.sp))}
+      modifier=Modifier.weight(1.5f).height(48.dp)
+     ){Text(if(saving)"SAVING..." else "CONFIRM & FINISH",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))}
     }
-    else->Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
-     Button(colors=ButtonDefaults.buttonColors(containerColor=Gold,contentColor=Color.White),border=androidx.compose.foundation.BorderStroke(2.dp,Color.White.copy(alpha=0.7f)),onClick={onShare(buildReceiptText(receipt!!))},modifier=Modifier.fillMaxWidth().height(60.dp)){
-      Text("SHARE DIGITAL RECEIPT",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))
-     }
+    else->Column(verticalArrangement=Arrangement.spacedBy(6.dp)){
+     Button(
+      colors=ButtonDefaults.buttonColors(containerColor=Gold,contentColor=Color.White),
+      border=androidx.compose.foundation.BorderStroke(2.dp,Gold),
+      onClick={onShare(buildReceiptText(receipt!!))},
+      modifier=Modifier.fillMaxWidth().height(48.dp)
+     ){Text("SHARE DIGITAL RECEIPT",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))}
      Button(
       colors=ButtonDefaults.buttonColors(containerColor=Teal,contentColor=Color.White),
-      border=androidx.compose.foundation.BorderStroke(2.dp,Color.White.copy(alpha=0.7f)),
+      border=androidx.compose.foundation.BorderStroke(2.dp,Teal),
       onClick={cart=emptyList();selectedProduct=null;selectedEmployee=null;quantity=1;productQuantities=emptyMap();search="";summary=null;receipt=null;error=null;step=0},
-      modifier=Modifier.fillMaxWidth().height(56.dp)
+      modifier=Modifier.fillMaxWidth().height(48.dp)
      ){Text("NEW TRANSACTION",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))}
     }
    }
   }
  }
- }
- }
-}
-
 data class CartLine(val product:Product,val quantity:Int)
 data class SavedReceipt(val ids:List<String>,val employee:Employee,val lines:List<CartLine>,val total:Double,val previousQuantity:Int,val previousValue:Double,val transactionAt:String,val pending:Boolean)
 
