@@ -86,12 +86,12 @@ class MainActivity:ComponentActivity(){
   onErrorContainer=Color(0xFFFFDAD6)
  )
  val boldTypography=Typography(
-  displayLarge=MaterialTheme.typography.displayLarge.copy(fontFamily=FontFamily.Serif,fontWeight=FontWeight.ExtraBold),
-  displayMedium=MaterialTheme.typography.displayMedium.copy(fontFamily=FontFamily.Serif,fontWeight=FontWeight.ExtraBold),
-  displaySmall=MaterialTheme.typography.displaySmall.copy(fontFamily=FontFamily.Serif,fontWeight=FontWeight.ExtraBold),
-  headlineLarge=MaterialTheme.typography.headlineLarge.copy(fontFamily=FontFamily.Serif,fontWeight=FontWeight.ExtraBold),
-  headlineMedium=MaterialTheme.typography.headlineMedium.copy(fontFamily=FontFamily.Serif,fontWeight=FontWeight.ExtraBold),
-  headlineSmall=MaterialTheme.typography.headlineSmall.copy(fontFamily=FontFamily.Serif,fontWeight=FontWeight.Bold),
+  displayLarge=MaterialTheme.typography.displayLarge.copy(fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.ExtraBold,letterSpacing=(-0.4).sp),
+  displayMedium=MaterialTheme.typography.displayMedium.copy(fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.ExtraBold),
+  displaySmall=MaterialTheme.typography.displaySmall.copy(fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.ExtraBold),
+  headlineLarge=MaterialTheme.typography.headlineLarge.copy(fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.ExtraBold,letterSpacing=0.2.sp),
+  headlineMedium=MaterialTheme.typography.headlineMedium.copy(fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.ExtraBold,letterSpacing=0.3.sp),
+  headlineSmall=MaterialTheme.typography.headlineSmall.copy(fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.Bold,letterSpacing=0.2.sp),
   titleLarge=MaterialTheme.typography.titleLarge.copy(fontWeight=FontWeight.Bold),
   titleMedium=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.Bold),
   labelLarge=MaterialTheme.typography.labelLarge.copy(fontWeight=FontWeight.Bold),
@@ -295,7 +295,7 @@ class MainActivity:ComponentActivity(){
     }
    }
   }
-  Text(when(step){0->"TAKE PRODUCTS";1->"SELECT EMPLOYEE";2->"CONFIRM";else->"DIGITAL RECEIPT"},style=MaterialTheme.typography.headlineMedium.copy(fontFamily=FontFamily.Serif,letterSpacing=0.5.sp))
+  Text(when(step){0->"TAKE PRODUCTS";1->"SELECT PERSON";2->"REVIEW ORDER";else->"RECEIPT"},style=MaterialTheme.typography.headlineMedium.copy(fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.Black,letterSpacing=0.8.sp))
   if(offlineMode){
    Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.small,color=MaterialTheme.colorScheme.errorContainer){
     Text("OFFLINE MODE — cached counter data is being used.",modifier=Modifier.padding(10.dp),color=MaterialTheme.colorScheme.onErrorContainer)
@@ -313,7 +313,7 @@ class MainActivity:ComponentActivity(){
   }
   Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)){
   when(step){   0->{
-    Text("PRODUCT CATALOGUE",style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.Serif,letterSpacing=0.8.sp))
+    Text("PRODUCT CATALOGUE",style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.Black,letterSpacing=1.sp))
     Text("ADJUST QUANTITY",style=MaterialTheme.typography.labelMedium.copy(letterSpacing=1.sp,fontWeight=FontWeight.ExtraBold))
     if(loading)CircularProgressIndicator()
     BoxWithConstraints(Modifier.fillMaxWidth()){
@@ -408,8 +408,8 @@ class MainActivity:ComponentActivity(){
     }
    }
    1->{
-    Text("WHO IS TAKING PRODUCTS?",style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.Serif,letterSpacing=0.8.sp))
-    Text("Find the employee or guest, then tap their name.",style=MaterialTheme.typography.bodyMedium)
+    Text("WHO IS TAKING PRODUCTS?",style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.Black,letterSpacing=0.8.sp))
+    Text("SELECT A PERSON",style=MaterialTheme.typography.labelMedium.copy(letterSpacing=1.sp,fontWeight=FontWeight.ExtraBold))
 
     Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=Cream),border=androidx.compose.foundation.BorderStroke(1.dp,Border),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
      Column(Modifier.fillMaxWidth().padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
@@ -461,7 +461,7 @@ class MainActivity:ComponentActivity(){
      }
     }
 
-    Text("Choose an existing person below, or register someone new.",style=MaterialTheme.typography.labelMedium)
+    Text("EXISTING OR NEW",style=MaterialTheme.typography.labelMedium.copy(letterSpacing=1.sp,fontWeight=FontWeight.ExtraBold))
 
     Column(verticalArrangement=Arrangement.spacedBy(7.dp)){
      employees.forEach{e->
@@ -563,8 +563,8 @@ class MainActivity:ComponentActivity(){
    }
    2->{
     val e=selectedEmployee!!;val s=summary
-    Text("REVIEW & CONFIRM",style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.Serif,letterSpacing=0.8.sp))
-    Text("Please check the person and products before saving.",style=MaterialTheme.typography.bodyMedium)
+    Text("REVIEW & CONFIRM",style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.Black,letterSpacing=0.8.sp))
+    Text("CHECK DETAILS • READY TO SAVE",style=MaterialTheme.typography.labelMedium.copy(letterSpacing=0.8.sp,fontWeight=FontWeight.ExtraBold))
 
     Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=Cream),border=androidx.compose.foundation.BorderStroke(1.dp,Border),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
      Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
