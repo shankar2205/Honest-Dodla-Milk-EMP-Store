@@ -42,7 +42,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private const val DAIRY_BG="https://images.unsplash.com/photo-1573731399281-6540bc50ed91?auto=format&fit=crop&fm=jpg&q=92&w=1800"
+private const val DAIRY_BG="https://images.unsplash.com/photo-1573731399281-6540bc50ed91?auto=format&fit=crop&fm=jpg&q=100&w=2600"
 private val Ink=Color(0xFF0E1B2A)
 private val Cream=Color(0xFFF8F4E8)
 private val WhiteCard=Color(0xFFFFFFFF)
@@ -55,8 +55,8 @@ private val Border=Color(0xFFB7C5C7)
 @Composable
 private fun DairyBackground(tint:Color=Color(0xFF12344A)){
  Box(Modifier.fillMaxSize()){
-  AsyncImage(model=DAIRY_BG,contentDescription="Dairy farm and cow background",modifier=Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
-  Box(Modifier.fillMaxSize().background(tint.copy(alpha=0.07f)))
+  AsyncImage(model=DAIRY_BG,contentDescription="Dairy farm and cow background",modifier=Modifier.fillMaxSize().graphicsLayer{alpha=0.46f},contentScale=ContentScale.Crop)
+  Box(Modifier.fillMaxSize().background(tint.copy(alpha=0.12f)))
   Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.White.copy(alpha=0.03f),Color.Black.copy(alpha=0.01f)))))
  }
 }
@@ -263,7 +263,7 @@ class MainActivity:ComponentActivity(){
    2->Color(0xFF70402B)
    else->Color(0xFF17604C)
   })
-  Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=0.10f)))
+  Box(Modifier.fillMaxSize().background(Color.White.copy(alpha=0.05f)))
  Column(Modifier.fillMaxSize().padding(horizontal=14.dp,vertical=8.dp),verticalArrangement=Arrangement.spacedBy(7.dp)){
   Card(
    Modifier.fillMaxWidth(),
@@ -301,7 +301,7 @@ class MainActivity:ComponentActivity(){
     }
    }
   }
-  Text(when(step){0->"TAKE PRODUCTS";1->"SELECT PERSON";2->"REVIEW ORDER";else->"RECEIPT"},style=MaterialTheme.typography.headlineMedium.copy(fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.Black,letterSpacing=0.8.sp))
+  Text(when(step){0->"Take Products";1->"Select Person";2->"Review Order";else->"Receipt"},style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.SemiBold,letterSpacing=0.2.sp))
   if(offlineMode){
    Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.small,color=MaterialTheme.colorScheme.errorContainer){
     Text("OFFLINE MODE — cached counter data is being used.",modifier=Modifier.padding(10.dp),color=MaterialTheme.colorScheme.onErrorContainer)
@@ -323,8 +323,8 @@ class MainActivity:ComponentActivity(){
   val receiptScale by animateFloatAsState(if(receiptEntering) 0.94f else 1f,animationSpec=tween(280),label="receipt_scale")
   Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).graphicsLayer{alpha=screenAlpha;translationY=screenOffset},verticalArrangement=Arrangement.spacedBy(8.dp)){
   when(step){   0->{
-    Text("PRODUCT CATALOGUE",style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.Black,letterSpacing=1.sp))
-    Text("ADJUST QUANTITY",style=MaterialTheme.typography.labelMedium.copy(letterSpacing=1.sp,fontWeight=FontWeight.ExtraBold))
+    Text("Choose Products",style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.SemiBold,letterSpacing=0.1.sp))
+    Text("Select the products being taken",style=MaterialTheme.typography.bodyMedium.copy(fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.Normal,letterSpacing=0.1.sp))
     if(loading)CircularProgressIndicator()
     BoxWithConstraints(Modifier.fillMaxWidth()){
      val columns=if(maxWidth<600.dp)2 else 4
@@ -419,8 +419,8 @@ class MainActivity:ComponentActivity(){
     }
    }
    1->{
-    Text("WHO IS TAKING PRODUCTS?",style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.Black,letterSpacing=0.8.sp))
-    Text("SELECT A PERSON",style=MaterialTheme.typography.labelMedium.copy(letterSpacing=1.sp,fontWeight=FontWeight.ExtraBold))
+    Text("Select Employee",style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.SemiBold,letterSpacing=0.1.sp))
+    Text("Choose who is taking these products",style=MaterialTheme.typography.bodyMedium.copy(fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.Normal,letterSpacing=0.1.sp))
 
     Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=Cream),border=androidx.compose.foundation.BorderStroke(1.dp,Border),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
      Column(Modifier.fillMaxWidth().padding(14.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
@@ -574,8 +574,8 @@ class MainActivity:ComponentActivity(){
    }
    2->{
     val e=selectedEmployee!!;val s=summary
-    Text("REVIEW & CONFIRM",style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.Black,letterSpacing=0.8.sp))
-    Text("CHECK DETAILS • READY TO SAVE",style=MaterialTheme.typography.labelMedium.copy(letterSpacing=0.8.sp,fontWeight=FontWeight.ExtraBold))
+    Text("Review Your Order",style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.SemiBold,letterSpacing=0.1.sp))
+    Text("Check the details before saving",style=MaterialTheme.typography.bodyMedium.copy(fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.Normal,letterSpacing=0.1.sp))
 
     Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=Cream),border=androidx.compose.foundation.BorderStroke(1.dp,Border),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
      Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
@@ -661,7 +661,7 @@ class MainActivity:ComponentActivity(){
 
      Card(Modifier.fillMaxWidth(),colors=CardDefaults.cardColors(containerColor=Cream),border=androidx.compose.foundation.BorderStroke(1.dp,Border),elevation=CardDefaults.cardElevation(defaultElevation=3.dp)){
       Column(Modifier.fillMaxWidth().padding(18.dp),verticalArrangement=Arrangement.spacedBy(10.dp)){
-       Text("RECEIPT",style=MaterialTheme.typography.labelLarge)
+       Text("Transaction Receipt",style=MaterialTheme.typography.titleMedium.copy(fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.SemiBold))
        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){
         Column{Text(formatReceiptDay(r.transactionAt),style=MaterialTheme.typography.titleMedium);Text("Day",style=MaterialTheme.typography.labelMedium)}
         Column(horizontalAlignment=Alignment.End){Text(formatReceiptTime(r.transactionAt),style=MaterialTheme.typography.titleMedium);Text(formatReceiptDate(r.transactionAt),style=MaterialTheme.typography.labelMedium)}
