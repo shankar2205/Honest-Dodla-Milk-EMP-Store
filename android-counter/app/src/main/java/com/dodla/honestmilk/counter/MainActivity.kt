@@ -337,7 +337,7 @@ class MainActivity:ComponentActivity(){
          val animatedQ by animateIntAsState(q,animationSpec=tween(140),label="quantity")
          ElevatedCard(
           colors=CardDefaults.elevatedCardColors(containerColor=WhiteCard),
-          modifier=Modifier.border(1.dp,if(q>0) Gold else Border,MaterialTheme.shapes.medium).weight(1f).aspectRatio(1.18f),
+          modifier=Modifier.border(2.dp,Teal,MaterialTheme.shapes.medium).weight(1f).aspectRatio(1.18f),
           elevation=CardDefaults.elevatedCardElevation(defaultElevation=6.dp)
          ){
           Column(
@@ -353,11 +353,11 @@ class MainActivity:ComponentActivity(){
            Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
             FilledTonalButton(onClick={
              productQuantities=productQuantities.toMutableMap().apply{put(p.id,maxOf(0,(this[p.id]?:0)-1))}
-            },enabled=q>0,contentPadding=PaddingValues(horizontal=8.dp,vertical=3.dp),modifier=Modifier.height(36.dp)){Text("−",style=MaterialTheme.typography.titleMedium)}
+            },enabled=q>0,colors=ButtonDefaults.filledTonalButtonColors(containerColor=TealPale,contentColor=Teal,disabledContainerColor=TealPale.copy(alpha=0.55f),disabledContentColor=Teal.copy(alpha=0.45f)),border=androidx.compose.foundation.BorderStroke(1.5.dp,Teal),contentPadding=PaddingValues(horizontal=8.dp,vertical=3.dp),modifier=Modifier.height(36.dp)){Text("−",style=MaterialTheme.typography.titleMedium)}
             Text(animatedQ.toString(),style=MaterialTheme.typography.titleLarge.copy(fontWeight=FontWeight.ExtraBold))
             FilledTonalButton(onClick={
              productQuantities=productQuantities.toMutableMap().apply{put(p.id,(this[p.id]?:0)+1)}
-            },contentPadding=PaddingValues(horizontal=10.dp,vertical=3.dp),modifier=Modifier.height(38.dp)){Text("+",style=MaterialTheme.typography.titleMedium)}
+            },colors=ButtonDefaults.filledTonalButtonColors(containerColor=Teal,contentColor=Color.White),border=androidx.compose.foundation.BorderStroke(1.5.dp,Teal),contentPadding=PaddingValues(horizontal=10.dp,vertical=3.dp),modifier=Modifier.height(38.dp)){Text("+",style=MaterialTheme.typography.titleMedium)}
            }
           }
          }
@@ -382,7 +382,7 @@ class MainActivity:ComponentActivity(){
         Column{Text("SELECTED ITEMS",style=MaterialTheme.typography.labelLarge);Text("$selectedCount units",style=MaterialTheme.typography.titleLarge)}
         Text("Ready to add",style=MaterialTheme.typography.labelMedium)
        }
-       Button(onClick={addSelectedProductsToCart()},modifier=Modifier.fillMaxWidth().height(50.dp)){
+       Button(onClick={addSelectedProductsToCart()},colors=ButtonDefaults.buttonColors(containerColor=Teal,contentColor=Color.White),border=androidx.compose.foundation.BorderStroke(2.dp,Teal),modifier=Modifier.fillMaxWidth().height(50.dp)){
         Text("ADD TO CART",style=MaterialTheme.typography.titleMedium)
        }
       }
@@ -719,22 +719,22 @@ class MainActivity:ComponentActivity(){
   ){
    when(step){
     0->Button(
-     colors=ButtonDefaults.buttonColors(containerColor=Gold,contentColor=Color.White,disabledContainerColor=Color(0xFFD9E1E4),disabledContentColor=Ink.copy(alpha=0.72f)),
-     border=androidx.compose.foundation.BorderStroke(2.dp,if(cart.isNotEmpty()) Gold else Border),
+     colors=ButtonDefaults.buttonColors(containerColor=Teal,contentColor=Color.White,disabledContainerColor=Color(0xFFD9E1E4),disabledContentColor=Ink.copy(alpha=0.72f)),
+     border=androidx.compose.foundation.BorderStroke(2.dp,if(cart.isNotEmpty()) Teal else Border),
      onClick={step=1},
      enabled=cart.isNotEmpty(),
      modifier=Modifier.fillMaxWidth().height(50.dp)
     ){Text("NEXT — SELECT PERSON",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold,letterSpacing=0.5.sp))}
     1->OutlinedButton(
-     colors=ButtonDefaults.outlinedButtonColors(containerColor=WhiteCard,contentColor=Ink),
-     border=androidx.compose.foundation.BorderStroke(2.dp,Gold),
+     colors=ButtonDefaults.outlinedButtonColors(containerColor=WhiteCard,contentColor=Teal),
+     border=androidx.compose.foundation.BorderStroke(2.dp,Teal),
      onClick={step=0},
      modifier=Modifier.fillMaxWidth().height(48.dp)
     ){Text("BACK TO PRODUCTS",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))}
     2->Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
      OutlinedButton(
-      colors=ButtonDefaults.outlinedButtonColors(containerColor=WhiteCard,contentColor=Ink),
-      border=androidx.compose.foundation.BorderStroke(2.dp,Gold),
+      colors=ButtonDefaults.outlinedButtonColors(containerColor=WhiteCard,contentColor=Teal),
+      border=androidx.compose.foundation.BorderStroke(2.dp,Teal),
       onClick={step=0},
       enabled=!saving,
       modifier=Modifier.weight(0.75f).height(44.dp)
@@ -764,7 +764,7 @@ class MainActivity:ComponentActivity(){
     else->Column(verticalArrangement=Arrangement.spacedBy(6.dp)){
      Button(
       colors=ButtonDefaults.buttonColors(containerColor=Gold,contentColor=Color.White),
-      border=androidx.compose.foundation.BorderStroke(2.dp,Gold),
+      border=androidx.compose.foundation.BorderStroke(2.dp,Teal),
       onClick={onShare(buildReceiptText(receipt!!))},
       modifier=Modifier.fillMaxWidth().height(48.dp)
      ){Text("SHARE DIGITAL RECEIPT",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))}
