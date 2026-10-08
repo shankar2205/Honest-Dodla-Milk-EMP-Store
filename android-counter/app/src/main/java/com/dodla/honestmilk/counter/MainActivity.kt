@@ -317,7 +317,11 @@ class MainActivity:ComponentActivity(){
     Text(it,modifier=Modifier.padding(10.dp),color=MaterialTheme.colorScheme.onErrorContainer)
    }
   }
-  LaunchedEffect(step){screenEntering=true;delay(18);screenEntering=false;if(step==3){receiptEntering=true;delay(18);receiptEntering=false}}\n  val screenOffset by animateFloatAsState(if(screenEntering) 18f else 0f,animationSpec=tween(220),label="screen_offset")\n  val screenAlpha by animateFloatAsState(if(screenEntering) 0.82f else 1f,animationSpec=tween(220),label="screen_alpha")\n  val receiptScale by animateFloatAsState(if(receiptEntering) 0.94f else 1f,animationSpec=tween(280),label="receipt_scale")\n  Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).graphicsLayer{alpha=screenAlpha;translationY=screenOffset},verticalArrangement=Arrangement.spacedBy(8.dp)){
+  LaunchedEffect(step){screenEntering=true;delay(18);screenEntering=false;if(step==3){receiptEntering=true;delay(18);receiptEntering=false}}
+  val screenOffset by animateFloatAsState(if(screenEntering) 18f else 0f,animationSpec=tween(220),label="screen_offset")
+  val screenAlpha by animateFloatAsState(if(screenEntering) 0.82f else 1f,animationSpec=tween(220),label="screen_alpha")
+  val receiptScale by animateFloatAsState(if(receiptEntering) 0.94f else 1f,animationSpec=tween(280),label="receipt_scale")
+  Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).graphicsLayer{alpha=screenAlpha;translationY=screenOffset},verticalArrangement=Arrangement.spacedBy(8.dp)){
   when(step){   0->{
     Text("PRODUCT CATALOGUE",style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.Black,letterSpacing=1.sp))
     Text("ADJUST QUANTITY",style=MaterialTheme.typography.labelMedium.copy(letterSpacing=1.sp,fontWeight=FontWeight.ExtraBold))
