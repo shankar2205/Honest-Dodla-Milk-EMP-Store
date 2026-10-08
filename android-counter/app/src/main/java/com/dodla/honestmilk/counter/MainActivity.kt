@@ -768,6 +768,7 @@ class MainActivity:ComponentActivity(){
    }
   }
  }
+}
 data class CartLine(val product:Product,val quantity:Int)
 data class SavedReceipt(val ids:List<String>,val employee:Employee,val lines:List<CartLine>,val total:Double,val previousQuantity:Int,val previousValue:Double,val transactionAt:String,val pending:Boolean)
 
