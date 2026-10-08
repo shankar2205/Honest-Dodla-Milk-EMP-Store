@@ -15,6 +15,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.runtime.*
@@ -27,6 +29,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import coil.compose.AsyncImage
 import androidx.compose.ui.platform.LocalContext
@@ -312,7 +315,7 @@ class MainActivity:ComponentActivity(){
     Text(it,modifier=Modifier.padding(10.dp),color=MaterialTheme.colorScheme.onErrorContainer)
    }
   }
-  Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)){
+  val screenAlpha by animateFloatAsState(1f,animationSpec=tween(220),label="screen_alpha")\n  Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).graphicsLayer{alpha=screenAlpha},verticalArrangement=Arrangement.spacedBy(8.dp)){
   when(step){   0->{
     Text("PRODUCT CATALOGUE",style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.Black,letterSpacing=1.sp))
     Text("ADJUST QUANTITY",style=MaterialTheme.typography.labelMedium.copy(letterSpacing=1.sp,fontWeight=FontWeight.ExtraBold))
@@ -344,7 +347,7 @@ class MainActivity:ComponentActivity(){
            Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
             FilledTonalButton(onClick={
              productQuantities=productQuantities.toMutableMap().apply{put(p.id,maxOf(0,(this[p.id]?:0)-1))}
-            },enabled=q>0,contentPadding=PaddingValues(horizontal=8.dp,vertical=3.dp),modifier=Modifier.height(38.dp)){Text("−",style=MaterialTheme.typography.titleMedium)}
+            },enabled=q>0,contentPadding=PaddingValues(horizontal=8.dp,vertical=3.dp),modifier=Modifier.height(36.dp)){Text("−",style=MaterialTheme.typography.titleMedium)}
             Text(animatedQ.toString(),style=MaterialTheme.typography.titleLarge.copy(fontWeight=FontWeight.ExtraBold))
             FilledTonalButton(onClick={
              productQuantities=productQuantities.toMutableMap().apply{put(p.id,(this[p.id]?:0)+1)}
@@ -447,7 +450,7 @@ class MainActivity:ComponentActivity(){
       elevation=CardDefaults.elevatedCardElevation(defaultElevation=4.dp)
      ){
       Column(Modifier.fillMaxSize().padding(12.dp),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally){
-       Text("NEW EMP",style=MaterialTheme.typography.titleMedium)
+       Text("NEW EMP",style=MaterialTheme.typography.labelLarge)
        Text("REGISTER",style=MaterialTheme.typography.titleMedium)
       }
      }
@@ -728,7 +731,7 @@ class MainActivity:ComponentActivity(){
       border=androidx.compose.foundation.BorderStroke(2.dp,Gold),
       onClick={step=0},
       enabled=!saving,
-      modifier=Modifier.weight(0.85f).height(48.dp)
+      modifier=Modifier.weight(0.75f).height(44.dp)
      ){Text("BACK",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))}
      Button(
       colors=ButtonDefaults.buttonColors(containerColor=Teal,contentColor=Color.White,disabledContainerColor=Color(0xFFD9E1E4),disabledContentColor=Ink.copy(alpha=0.72f)),
@@ -749,7 +752,7 @@ class MainActivity:ComponentActivity(){
         saving=false
        }
       },
-      modifier=Modifier.weight(1.5f).height(48.dp)
+      modifier=Modifier.weight(1.35f).height(44.dp)
      ){Text(if(saving)"SAVING..." else "CONFIRM & FINISH",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))}
     }
     else->Column(verticalArrangement=Arrangement.spacedBy(6.dp)){
