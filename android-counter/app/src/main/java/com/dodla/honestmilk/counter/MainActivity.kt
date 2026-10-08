@@ -142,7 +142,7 @@ class MainActivity:ComponentActivity(){
        Text(it,modifier=Modifier.padding(10.dp),color=MaterialTheme.colorScheme.onErrorContainer)
       }
      }
-     Button(onClick={onLogin(email.trim(),password)},enabled=!loading&&email.isNotBlank()&&password.isNotBlank(),modifier=Modifier.fillMaxWidth().height(60.dp)){
+     Button(onClick={onLogin(email.trim(),password)},enabled=!loading&&email.isNotBlank()&&password.isNotBlank(),modifier=Modifier.fillMaxWidth().height(50.dp)){
       if(loading) CircularProgressIndicator(modifier=Modifier.size(22.dp),strokeWidth=2.dp) else Text("LOGIN",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold,letterSpacing=1.sp))
      }
     }
@@ -256,14 +256,14 @@ class MainActivity:ComponentActivity(){
    else->Color(0xFF17604C)
   })
   Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha=0.10f)))
- Column(Modifier.fillMaxSize().padding(horizontal=16.dp,vertical=14.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
+ Column(Modifier.fillMaxSize().padding(horizontal=14.dp,vertical=8.dp),verticalArrangement=Arrangement.spacedBy(7.dp)){
   Card(
    Modifier.fillMaxWidth(),
    colors=CardDefaults.cardColors(containerColor=Color(0xFFFFFBF2).copy(alpha=0.96f)),
    elevation=CardDefaults.cardElevation(defaultElevation=8.dp),
    shape=MaterialTheme.shapes.large
   ){
-   Row(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=12.dp),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
+   Row(Modifier.fillMaxWidth().padding(horizontal=14.dp,vertical=8.dp),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
     Column(verticalArrangement=Arrangement.spacedBy(2.dp)){
      Text("HONEST MILK",style=MaterialTheme.typography.headlineSmall.copy(fontFamily=FontFamily.Serif,fontWeight=FontWeight.ExtraBold,letterSpacing=2.sp))
      Text("DODLA EMPLOYEE STORE",style=MaterialTheme.typography.labelMedium)
@@ -278,21 +278,21 @@ class MainActivity:ComponentActivity(){
     border=androidx.compose.foundation.BorderStroke(1.dp,Border),
     elevation=CardDefaults.cardElevation(defaultElevation=5.dp)
    ){
-    Column(Modifier.fillMaxWidth().padding(14.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
+    Column(Modifier.fillMaxWidth().padding(10.dp),verticalArrangement=Arrangement.spacedBy(2.dp)){
      Text(greeting+"!",color=Ink,style=MaterialTheme.typography.headlineSmall.copy(fontWeight=FontWeight.ExtraBold))
      Text(currentDateTime,color=Ink.copy(alpha=0.82f),style=MaterialTheme.typography.bodyMedium.copy(fontWeight=FontWeight.SemiBold))
     }
    }
   }
-  Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+  Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(5.dp)){
    listOf("1 PRODUCTS","2 PERSON","3 REVIEW","4 RECEIPT").forEachIndexed{i,label->
     val active=i==step
     Surface(
-     modifier=Modifier.weight(1f),
+     modifier=Modifier.weight(1f).height(34.dp),
      shape=MaterialTheme.shapes.small,
      color=if(active) Teal else Cream
     ){
-     Text(label,style=MaterialTheme.typography.labelMedium.copy(color=if(active) Color.White else Ink),modifier=Modifier.padding(vertical=8.dp,horizontal=4.dp),textAlign=androidx.compose.ui.text.style.TextAlign.Center)
+     Text(label,style=MaterialTheme.typography.labelMedium.copy(color=if(active) Color.White else Ink),modifier=Modifier.padding(vertical=5.dp,horizontal=2.dp),textAlign=androidx.compose.ui.text.style.TextAlign.Center)
     }
    }
   }
@@ -312,7 +312,7 @@ class MainActivity:ComponentActivity(){
     Text(it,modifier=Modifier.padding(10.dp),color=MaterialTheme.colorScheme.onErrorContainer)
    }
   }
-  Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(12.dp)){
+  Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)){
   when(step){   0->{
     Text("PRODUCT CATALOGUE",style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.Serif,letterSpacing=0.8.sp))
     Text("Tap a product to add quickly. Adjust quantity with − / +.",style=MaterialTheme.typography.bodyMedium)
@@ -320,20 +320,20 @@ class MainActivity:ComponentActivity(){
     BoxWithConstraints(Modifier.fillMaxWidth()){
      val columns=if(maxWidth<600.dp)2 else 4
      val rows=products.chunked(columns)
-     Column(verticalArrangement=Arrangement.spacedBy(14.dp)){
+     Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
       rows.forEach{row->
-       Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(14.dp)){
+       Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
         row.forEach{p->
          val q=productQuantities[p.id]?:0
          ElevatedCard(
           colors=CardDefaults.elevatedCardColors(containerColor=WhiteCard),
-          modifier=Modifier.border(1.dp,if(q>0) Gold else Border,MaterialTheme.shapes.medium).weight(1f).aspectRatio(1f).clickable{
+          modifier=Modifier.border(1.dp,if(q>0) Gold else Border,MaterialTheme.shapes.medium).weight(1f).aspectRatio(1.18f).clickable{
            productQuantities=productQuantities.toMutableMap().apply{put(p.id,(this[p.id]?:0)+1)}
           },
           elevation=CardDefaults.elevatedCardElevation(defaultElevation=6.dp)
          ){
           Column(
-           Modifier.fillMaxSize().padding(14.dp),
+           Modifier.fillMaxSize().padding(8.dp),
            verticalArrangement=Arrangement.SpaceBetween,
            horizontalAlignment=Alignment.CenterHorizontally
           ){
@@ -345,8 +345,8 @@ class MainActivity:ComponentActivity(){
            Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
             FilledTonalButton(onClick={
              productQuantities=productQuantities.toMutableMap().apply{put(p.id,maxOf(0,(this[p.id]?:0)-1))}
-            },enabled=q>0,contentPadding=PaddingValues(horizontal=12.dp)){Text("−")}
-            Text(q.toString(),style=MaterialTheme.typography.headlineSmall)
+            },enabled=q>0,contentPadding=PaddingValues(horizontal=9.dp,vertical=5.dp)){Text("−")}
+            Text(q.toString(),style=MaterialTheme.typography.titleLarge.copy(fontWeight=FontWeight.ExtraBold))
             FilledTonalButton(onClick={
              productQuantities=productQuantities.toMutableMap().apply{put(p.id,(this[p.id]?:0)+1)}
             },contentPadding=PaddingValues(horizontal=12.dp)){Text("+")}
@@ -374,7 +374,7 @@ class MainActivity:ComponentActivity(){
         Column{Text("SELECTED ITEMS",style=MaterialTheme.typography.labelLarge);Text("$selectedCount units",style=MaterialTheme.typography.titleLarge)}
         Text("Ready to add",style=MaterialTheme.typography.labelMedium)
        }
-       Button(onClick={addSelectedProductsToCart()},modifier=Modifier.fillMaxWidth().height(56.dp)){
+       Button(onClick={addSelectedProductsToCart()},modifier=Modifier.fillMaxWidth().height(50.dp)){
         Text("ADD TO CART",style=MaterialTheme.typography.titleMedium)
        }
       }
@@ -455,7 +455,7 @@ class MainActivity:ComponentActivity(){
 
     Text("Choose an existing person below, or register someone new.",style=MaterialTheme.typography.labelMedium)
 
-    Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
+    Column(verticalArrangement=Arrangement.spacedBy(7.dp)){
      employees.forEach{e->
       ElevatedCard(
        colors=CardDefaults.elevatedCardColors(containerColor=Cream),
@@ -472,7 +472,7 @@ class MainActivity:ComponentActivity(){
        },
        elevation=CardDefaults.elevatedCardElevation(defaultElevation=3.dp)
       ){
-       Row(Modifier.fillMaxWidth().padding(14.dp),verticalAlignment=Alignment.CenterVertically){
+       Row(Modifier.fillMaxWidth().padding(10.dp),verticalAlignment=Alignment.CenterVertically){
         Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){
          Text(e.name,style=MaterialTheme.typography.titleLarge)
          Text(e.identifier,style=MaterialTheme.typography.titleMedium)
@@ -486,13 +486,13 @@ class MainActivity:ComponentActivity(){
      }
     }
     if(showNewEmpRegister){
-     AlertDialog(onDismissRequest={if(!registeringEmp)showNewEmpRegister=false},title={Text("NEW EMP REGISTER")},text={
+     AlertDialog(onDismissRequest={if(!registeringEmp)showNewEmpRegister=false},containerColor=Cream,titleContentColor=Ink,textContentColor=Ink,title={Text("NEW EMP REGISTER",color=Ink)},text={
       Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(10.dp)){
-       Text("This will be registered as an employee, not a guest.",style=MaterialTheme.typography.bodyMedium)
-       OutlinedTextField(newEmpCode,{newEmpCode=it},label={Text("Employee ID *")},singleLine=true,enabled=!registeringEmp,modifier=Modifier.fillMaxWidth())
-       OutlinedTextField(newEmpName,{newEmpName=it},label={Text("Name *")},singleLine=true,enabled=!registeringEmp,modifier=Modifier.fillMaxWidth())
-       OutlinedTextField(newEmpPhone,{newEmpPhone=it},label={Text("Mobile (optional)")},singleLine=true,enabled=!registeringEmp,modifier=Modifier.fillMaxWidth())
-       OutlinedTextField(newEmpDepartment,{newEmpDepartment=it},label={Text("Department (optional)")},singleLine=true,enabled=!registeringEmp,modifier=Modifier.fillMaxWidth())
+       Text("This will be registered as an employee, not a guest.",color=Ink,style=MaterialTheme.typography.bodyMedium)
+       OutlinedTextField(newEmpCode,{newEmpCode=it},colors=OutlinedTextFieldDefaults.colors(focusedTextColor=Ink,unfocusedTextColor=Ink,focusedLabelColor=Teal,unfocusedLabelColor=Ink,focusedBorderColor=Teal,unfocusedBorderColor=Border),label={Text("Employee ID *",color=Ink)},singleLine=true,enabled=!registeringEmp,modifier=Modifier.fillMaxWidth())
+       OutlinedTextField(newEmpName,{newEmpName=it},colors=OutlinedTextFieldDefaults.colors(focusedTextColor=Ink,unfocusedTextColor=Ink,focusedLabelColor=Teal,unfocusedLabelColor=Ink,focusedBorderColor=Teal,unfocusedBorderColor=Border),label={Text("Name *",color=Ink)},singleLine=true,enabled=!registeringEmp,modifier=Modifier.fillMaxWidth())
+       OutlinedTextField(newEmpPhone,{newEmpPhone=it},colors=OutlinedTextFieldDefaults.colors(focusedTextColor=Ink,unfocusedTextColor=Ink,focusedLabelColor=Teal,unfocusedLabelColor=Ink,focusedBorderColor=Teal,unfocusedBorderColor=Border),label={Text("Mobile (optional)",color=Ink)},singleLine=true,enabled=!registeringEmp,modifier=Modifier.fillMaxWidth())
+       OutlinedTextField(newEmpDepartment,{newEmpDepartment=it},colors=OutlinedTextFieldDefaults.colors(focusedTextColor=Ink,unfocusedTextColor=Ink,focusedLabelColor=Teal,unfocusedLabelColor=Ink,focusedBorderColor=Teal,unfocusedBorderColor=Border),label={Text("Department (optional)",color=Ink)},singleLine=true,enabled=!registeringEmp,modifier=Modifier.fillMaxWidth())
       }
      },confirmButton={
       Button(modifier=Modifier.height(52.dp),enabled=!registeringEmp&&newEmpCode.trim().isNotBlank()&&newEmpName.trim().isNotBlank()&&repo.isOnline(),onClick={
@@ -514,13 +514,16 @@ class MainActivity:ComponentActivity(){
     if(showAddEmployee){
      AlertDialog(
       onDismissRequest={if(!addingGuest)showAddEmployee=false},
-      title={Text("REGISTER AS GUEST")},
+      containerColor=Cream,
+      titleContentColor=Ink,
+      textContentColor=Ink,
+      title={Text("REGISTER AS GUEST",color=Ink)},
       text={
        Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(10.dp)){
-        Text("This will be added as a guest employee only.",style=MaterialTheme.typography.bodyMedium)
-        OutlinedTextField(newGuestName,{newGuestName=it},label={Text("Name *")},singleLine=true,enabled=!addingGuest,modifier=Modifier.fillMaxWidth())
-        OutlinedTextField(newGuestPhone,{newGuestPhone=it},label={Text("Mobile (optional)")},singleLine=true,enabled=!addingGuest,modifier=Modifier.fillMaxWidth())
-        OutlinedTextField(newGuestDepartment,{newGuestDepartment=it},label={Text("Department (optional)")},singleLine=true,enabled=!addingGuest,modifier=Modifier.fillMaxWidth())
+        Text("This will be added as a guest employee only.",color=Ink,style=MaterialTheme.typography.bodyMedium)
+        OutlinedTextField(newGuestName,{newGuestName=it},colors=OutlinedTextFieldDefaults.colors(focusedTextColor=Ink,unfocusedTextColor=Ink,focusedLabelColor=Teal,unfocusedLabelColor=Ink,focusedBorderColor=Teal,unfocusedBorderColor=Border),label={Text("Name *",color=Ink)},singleLine=true,enabled=!addingGuest,modifier=Modifier.fillMaxWidth())
+        OutlinedTextField(newGuestPhone,{newGuestPhone=it},colors=OutlinedTextFieldDefaults.colors(focusedTextColor=Ink,unfocusedTextColor=Ink,focusedLabelColor=Teal,unfocusedLabelColor=Ink,focusedBorderColor=Teal,unfocusedBorderColor=Border),label={Text("Mobile (optional)",color=Ink)},singleLine=true,enabled=!addingGuest,modifier=Modifier.fillMaxWidth())
+        OutlinedTextField(newGuestDepartment,{newGuestDepartment=it},colors=OutlinedTextFieldDefaults.colors(focusedTextColor=Ink,unfocusedTextColor=Ink,focusedLabelColor=Teal,unfocusedLabelColor=Ink,focusedBorderColor=Teal,unfocusedBorderColor=Border),label={Text("Department (optional)",color=Ink)},singleLine=true,enabled=!addingGuest,modifier=Modifier.fillMaxWidth())
        }
       },
       confirmButton={
@@ -692,12 +695,12 @@ class MainActivity:ComponentActivity(){
   }
 
   Surface(
-   Modifier.fillMaxWidth().padding(top=2.dp),
-   shape=MaterialTheme.shapes.extraLarge,
+   Modifier.fillMaxWidth().padding(top=3.dp),
+   shape=MaterialTheme.shapes.large,
    color=Cream,
    border=androidx.compose.foundation.BorderStroke(1.dp,Border),
    tonalElevation=0.dp,
-   shadowElevation=12.dp
+   shadowElevation=6.dp
   ){
    when(step){
     0->Button(
@@ -705,7 +708,7 @@ class MainActivity:ComponentActivity(){
      border=androidx.compose.foundation.BorderStroke(2.dp,Gold),
      onClick={step=1},
      enabled=cart.isNotEmpty(),
-     modifier=Modifier.fillMaxWidth().height(64.dp)
+     modifier=Modifier.fillMaxWidth().height(52.dp)
     ){Text("NEXT — SELECT PERSON",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold,letterSpacing=0.7.sp))}
     1->OutlinedButton(
      colors=ButtonDefaults.outlinedButtonColors(containerColor=WhiteCard,contentColor=Ink,disabledContainerColor=WhiteCard,disabledContentColor=Ink.copy(alpha=0.5f)),
@@ -714,7 +717,7 @@ class MainActivity:ComponentActivity(){
      modifier=Modifier.fillMaxWidth().height(60.dp)
     ){Text("BACK TO PRODUCTS",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))}
     2->Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp)){
-     OutlinedButton(colors=ButtonDefaults.outlinedButtonColors(contentColor=Ink),border=androidx.compose.foundation.BorderStroke(2.dp,Gold),onClick={step=0},enabled=!saving,modifier=Modifier.weight(1f).height(60.dp)){Text("BACK",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))}
+     OutlinedButton(colors=ButtonDefaults.outlinedButtonColors(contentColor=Ink),border=androidx.compose.foundation.BorderStroke(2.dp,Gold),onClick={step=0},enabled=!saving,modifier=Modifier.weight(1f).height(50.dp)){Text("BACK",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold))}
      Button(colors=ButtonDefaults.buttonColors(containerColor=Teal,contentColor=Color.White,disabledContainerColor=Color(0xFFD9E1E4),disabledContentColor=Ink.copy(alpha=0.72f)),border=androidx.compose.foundation.BorderStroke(2.dp,Teal),
       enabled=!saving,
       onClick={
@@ -732,7 +735,7 @@ class MainActivity:ComponentActivity(){
         saving=false
        }
       },
-      modifier=Modifier.weight(1.6f).height(64.dp)
+      modifier=Modifier.weight(1.6f).height(52.dp)
      ){Text(if(saving)"SAVING..." else "CONFIRM & FINISH",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold,letterSpacing=0.5.sp))}
     }
     else->Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
