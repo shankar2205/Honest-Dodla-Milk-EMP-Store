@@ -40,14 +40,14 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 private const val DAIRY_BG="https://images.unsplash.com/photo-1573731399281-6540bc50ed91?auto=format&fit=crop&fm=jpg&q=92&w=1800"
-private val Ink=Color(0xFF12304A)
-private val Cream=Color(0xFFFFFBF2)
+private val Ink=Color(0xFF0E1B2A)
+private val Cream=Color(0xFFF8F4E8)
 private val WhiteCard=Color(0xFFFFFFFF)
-private val Teal=Color(0xFF0B6575)
-private val TealPale=Color(0xFFE3F3F4)
-private val Gold=Color(0xFFB66A00)
-private val GoldPale=Color(0xFFFFF1D6)
-private val Border=Color(0xFF9CB7BF)
+private val Teal=Color(0xFF096B73)
+private val TealPale=Color(0xFFE5F2F0)
+private val Gold=Color(0xFFC27A12)
+private val GoldPale=Color(0xFFFFF2D5)
+private val Border=Color(0xFFB7C5C7)
 
 @Composable
 private fun DairyBackground(tint:Color=Color(0xFF12344A)){
@@ -68,20 +68,20 @@ class MainActivity:ComponentActivity(){
 
 @Composable fun CounterApp(onShare:(String)->Unit){
  val darkColors=darkColorScheme(
-  primary=Color(0xFF0B6575),
+  primary=Color(0xFF096B73),
   onPrimary=Color.White,
-  primaryContainer=Color(0xFF4D3B00),
+  primaryContainer=Color(0xFF5A3A00),
   onPrimaryContainer=Color(0xFFFFE7A0),
-  secondary=Color(0xFFB66A00),
+  secondary=Color(0xFFC27A12),
   onSecondary=Color.White,
-  secondaryContainer=Color(0xFF063F46),
+  secondaryContainer=Color(0xFF073E43),
   onSecondaryContainer=Color(0xFFB8F4FB),
-  background=Color(0xFFFFFBF2),
-  onBackground=Color(0xFF15324A),
-  surface=Color(0xFFFFFBF2),
-  onSurface=Color(0xFF15324A),
-  surfaceVariant=Color(0xFFE7EEF1),
-  onSurfaceVariant=Color(0xFF41566B),
+  background=Color(0xFFF8F4E8),
+  onBackground=Color(0xFF0E1B2A),
+  surface=Color(0xFFF8F4E8),
+  onSurface=Color(0xFF0E1B2A),
+  surfaceVariant=Color(0xFFE8EEEE),
+  onSurfaceVariant=Color(0xFF42535D),
   error=Color(0xFFFF6B6B),
   errorContainer=Color(0xFF4A1F26),
   onErrorContainer=Color(0xFFFFDAD6)
