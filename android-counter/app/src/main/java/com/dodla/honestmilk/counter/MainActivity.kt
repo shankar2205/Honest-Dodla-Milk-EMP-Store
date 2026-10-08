@@ -16,6 +16,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.animateIntAsState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -324,6 +325,7 @@ class MainActivity:ComponentActivity(){
        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
         row.forEach{p->
          val q=productQuantities[p.id]?:0
+         val animatedQ by animateIntAsState(q,animationSpec=tween(140),label="quantity")
          ElevatedCard(
           colors=CardDefaults.elevatedCardColors(containerColor=WhiteCard),
           modifier=Modifier.border(1.dp,if(q>0) Gold else Border,MaterialTheme.shapes.medium).weight(1f).aspectRatio(1.18f),
@@ -343,7 +345,7 @@ class MainActivity:ComponentActivity(){
             FilledTonalButton(onClick={
              productQuantities=productQuantities.toMutableMap().apply{put(p.id,maxOf(0,(this[p.id]?:0)-1))}
             },enabled=q>0,contentPadding=PaddingValues(horizontal=8.dp,vertical=3.dp),modifier=Modifier.height(38.dp)){Text("−",style=MaterialTheme.typography.titleMedium)}
-            Text(q.toString(),style=MaterialTheme.typography.titleLarge.copy(fontWeight=FontWeight.ExtraBold))
+            Text(animatedQ.toString(),style=MaterialTheme.typography.titleLarge.copy(fontWeight=FontWeight.ExtraBold))
             FilledTonalButton(onClick={
              productQuantities=productQuantities.toMutableMap().apply{put(p.id,(this[p.id]?:0)+1)}
             },contentPadding=PaddingValues(horizontal=10.dp,vertical=3.dp),modifier=Modifier.height(38.dp)){Text("+",style=MaterialTheme.typography.titleMedium)}
