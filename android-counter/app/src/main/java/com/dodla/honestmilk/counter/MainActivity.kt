@@ -14,6 +14,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -50,8 +52,8 @@ private val Border=Color(0xFF9CB7BF)
 private fun DairyBackground(tint:Color=Color(0xFF12344A)){
  Box(Modifier.fillMaxSize()){
   AsyncImage(model=DAIRY_BG,contentDescription="Dairy farm and cow background",modifier=Modifier.fillMaxSize(),contentScale=ContentScale.Crop)
-  Box(Modifier.fillMaxSize().background(tint.copy(alpha=0.16f)))
-  Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.White.copy(alpha=0.08f),Color.Black.copy(alpha=0.03f)))))
+  Box(Modifier.fillMaxSize().background(tint.copy(alpha=0.07f)))
+  Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.White.copy(alpha=0.03f),Color.Black.copy(alpha=0.01f)))))
  }
 }
 
@@ -119,7 +121,7 @@ class MainActivity:ComponentActivity(){
  var email by remember{mutableStateOf("")};var password by remember{mutableStateOf("")}
  Box(Modifier.fillMaxSize()){
   DairyBackground(Color(0xFF0D4050))
-  Box(Modifier.fillMaxSize().background(Color.White.copy(alpha=0.04f)))
+  Box(Modifier.fillMaxSize().background(Color.White.copy(alpha=0.01f)))
   Box(Modifier.fillMaxSize().padding(20.dp),contentAlignment=Alignment.Center){
    Card(
     Modifier.fillMaxWidth(),
@@ -129,11 +131,11 @@ class MainActivity:ComponentActivity(){
    ){
     Column(Modifier.fillMaxWidth().padding(24.dp),verticalArrangement=Arrangement.spacedBy(16.dp),horizontalAlignment=Alignment.CenterHorizontally){
      Text("HONEST MILK",color=Color(0xFF12304A),style=MaterialTheme.typography.headlineLarge.copy(letterSpacing=2.sp,fontWeight=FontWeight.ExtraBold))
-     Text("DODLA EMPLOYEE STORE",color=Color(0xFFB66A00),style=MaterialTheme.typography.labelLarge.copy(letterSpacing=1.8.sp,fontWeight=FontWeight.Bold))
+     Text("DODLA EMPLOYEE STORE",color=Gold,style=MaterialTheme.typography.labelLarge.copy(letterSpacing=2.2.sp,fontWeight=FontWeight.ExtraBold))
      HorizontalDivider()
      Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(4.dp)){
-      Text("COUNTER LOGIN",color=Color(0xFF12304A),style=MaterialTheme.typography.headlineSmall.copy(letterSpacing=1.2.sp,fontWeight=FontWeight.ExtraBold))
-      Text("Sign in to start serving employees and guests.",color=Color(0xFF41566B),style=MaterialTheme.typography.bodyMedium)
+      Text("COUNTER LOGIN",color=Ink,style=MaterialTheme.typography.headlineSmall.copy(letterSpacing=1.6.sp,fontWeight=FontWeight.Black))
+      Text("SIGN IN TO START",color=Color(0xFF41566B),style=MaterialTheme.typography.labelLarge.copy(letterSpacing=1.1.sp,fontWeight=FontWeight.Bold))
      }
      OutlinedTextField(email,{email=it},label={Text("Email")},placeholder={Text("Enter your email")},singleLine=true,enabled=!loading,modifier=Modifier.fillMaxWidth())
      OutlinedTextField(password,{password=it},label={Text("Password")},placeholder={Text("Enter your password")},singleLine=true,enabled=!loading,visualTransformation=PasswordVisualTransformation(),modifier=Modifier.fillMaxWidth())
@@ -285,14 +287,11 @@ class MainActivity:ComponentActivity(){
    }
   }
   Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(5.dp)){
-   listOf("1 PRODUCTS","2 PERSON","3 REVIEW","4 RECEIPT").forEachIndexed{i,label->
+   listOf("PRODUCTS","PERSON","REVIEW","RECEIPT").forEachIndexed{i,label->
     val active=i==step
-    Surface(
-     modifier=Modifier.weight(1f).height(34.dp),
-     shape=MaterialTheme.shapes.small,
-     color=if(active) Teal else Cream
-    ){
-     Text(label,style=MaterialTheme.typography.labelMedium.copy(color=if(active) Color.White else Ink),modifier=Modifier.padding(vertical=5.dp,horizontal=2.dp),textAlign=androidx.compose.ui.text.style.TextAlign.Center)
+    val tabColor by animateColorAsState(if(active) Teal else Cream,animationSpec=tween(180),label="tab_color")
+    Surface(modifier=Modifier.weight(1f).height(32.dp),shape=MaterialTheme.shapes.medium,color=tabColor,border=androidx.compose.foundation.BorderStroke(1.dp,if(active) Teal else Border)){
+     Text("${i+1}  $label",style=MaterialTheme.typography.labelMedium.copy(color=if(active) Color.White else Ink,fontWeight=if(active) FontWeight.ExtraBold else FontWeight.Bold,letterSpacing=0.4.sp),modifier=Modifier.padding(vertical=4.dp,horizontal=1.dp),textAlign=androidx.compose.ui.text.style.TextAlign.Center)
     }
    }
   }
@@ -315,7 +314,7 @@ class MainActivity:ComponentActivity(){
   Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)){
   when(step){   0->{
     Text("PRODUCT CATALOGUE",style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.Serif,letterSpacing=0.8.sp))
-    Text("Use + or − to adjust quantity. Tap only the controls.",style=MaterialTheme.typography.bodyMedium)
+    Text("ADJUST QUANTITY",style=MaterialTheme.typography.labelMedium.copy(letterSpacing=1.sp,fontWeight=FontWeight.ExtraBold))
     if(loading)CircularProgressIndicator()
     BoxWithConstraints(Modifier.fillMaxWidth()){
      val columns=if(maxWidth<600.dp)2 else 4
