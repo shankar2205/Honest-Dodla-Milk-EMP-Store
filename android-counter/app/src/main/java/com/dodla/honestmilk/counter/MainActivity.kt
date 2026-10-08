@@ -763,7 +763,7 @@ class MainActivity:ComponentActivity(){
     }
     else->Column(verticalArrangement=Arrangement.spacedBy(6.dp)){
      Button(
-      colors=ButtonDefaults.buttonColors(containerColor=Gold,contentColor=Color.White),
+      colors=ButtonDefaults.buttonColors(containerColor=Teal,contentColor=Color.White),
       border=androidx.compose.foundation.BorderStroke(2.dp,Teal),
       onClick={onShare(buildReceiptText(receipt!!))},
       modifier=Modifier.fillMaxWidth().height(48.dp)
