@@ -83,7 +83,7 @@ class CounterRepository(context: Context){
     put("p_phone",phone.trim().ifBlank{null})
     put("p_department",department.trim().ifBlank{null})
    }
-  ).decodeSingle<EmployeeRow>()
+  ).decodeAs<EmployeeRow>()
  }
 
  suspend fun createEmployee(code:String,name:String,phone:String,department:String):EmployeeRow{
@@ -97,7 +97,7 @@ class CounterRepository(context: Context){
     put("p_phone",phone.trim().ifBlank{null})
     put("p_department",department.trim().ifBlank{null})
    }
-  ).decodeSingle<EmployeeRow>()
+  ).decodeAs<EmployeeRow>()
  }
 
  suspend fun employees(search:String=""):List<EmployeeRow>{
