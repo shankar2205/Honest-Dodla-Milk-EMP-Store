@@ -97,7 +97,7 @@ class CounterRepository(context: Context){
     put("p_phone",phone.trim().ifBlank{null})
     put("p_department",department.trim().ifBlank{null})
    }
-  ).decodeList<EmployeeRow>().firstOrNull() ?: error("Unable to create employee.")
+  ).decodeSingle<EmployeeRow>()
  }
 
  suspend fun employees(search:String=""):List<EmployeeRow>{
