@@ -14,6 +14,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.animateFloatAsState
@@ -123,33 +126,158 @@ class MainActivity:ComponentActivity(){
 
 @Composable fun LoginScreen(loading:Boolean,error:String?,onLogin:(String,String)->Unit){
  var email by remember{mutableStateOf("")};var password by remember{mutableStateOf("")}
+ val accent by animateColorAsState(
+  targetValue=if(loading) Color(0xFFB9A0FF) else Color(0xFF79E0CF),
+  animationSpec=tween(durationMillis=450),
+  label="loginAccent"
+ )
  Box(Modifier.fillMaxSize()){
+  // Keep the existing full-screen dairy photograph and tint unchanged.
   DairyBackground(Color(0xFF0D4050))
   Box(Modifier.fillMaxSize().background(Color.White.copy(alpha=0.01f)))
   Box(Modifier.fillMaxSize().padding(20.dp),contentAlignment=Alignment.Center){
-   Card(
-    Modifier.fillMaxWidth(),
-    colors=CardDefaults.cardColors(containerColor=Color(0xFFFFFBF2).copy(alpha=0.97f)),
-    elevation=CardDefaults.cardElevation(defaultElevation=12.dp),
-    shape=MaterialTheme.shapes.extraLarge
+   AnimatedVisibility(
+    visible=true,
+    enter=fadeIn(animationSpec=tween(durationMillis=650))+
+     slideInVertically(initialOffsetY={height->height/12},animationSpec=tween(durationMillis=650))
    ){
-    Column(Modifier.fillMaxWidth().padding(24.dp),verticalArrangement=Arrangement.spacedBy(16.dp),horizontalAlignment=Alignment.CenterHorizontally){
-     Text("HONEST MILK",color=Color(0xFF12304A),style=MaterialTheme.typography.headlineLarge.copy(letterSpacing=2.sp,fontWeight=FontWeight.ExtraBold))
-     Text("DODLA EMPLOYEE STORE",color=Gold,style=MaterialTheme.typography.labelLarge.copy(letterSpacing=2.2.sp,fontWeight=FontWeight.ExtraBold))
-     HorizontalDivider()
-     Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(4.dp)){
-      Text("COUNTER LOGIN",color=Ink,style=MaterialTheme.typography.headlineSmall.copy(letterSpacing=1.6.sp,fontWeight=FontWeight.Black))
-      Text("SIGN IN TO START",color=Color(0xFF41566B),style=MaterialTheme.typography.labelLarge.copy(letterSpacing=1.1.sp,fontWeight=FontWeight.Bold))
-     }
-     OutlinedTextField(email,{email=it},label={Text("Email")},placeholder={Text("Enter your email")},singleLine=true,enabled=!loading,modifier=Modifier.fillMaxWidth())
-     OutlinedTextField(password,{password=it},label={Text("Password")},placeholder={Text("Enter your password")},singleLine=true,enabled=!loading,visualTransformation=PasswordVisualTransformation(),modifier=Modifier.fillMaxWidth())
-     error?.let{
-      Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.small,color=MaterialTheme.colorScheme.errorContainer){
-       Text(it,modifier=Modifier.padding(10.dp),color=MaterialTheme.colorScheme.onErrorContainer)
+    Card(
+     Modifier.fillMaxWidth(),
+     colors=CardDefaults.cardColors(containerColor=Color(0xFF102D35)),
+     elevation=CardDefaults.cardElevation(defaultElevation=18.dp),
+     shape=MaterialTheme.shapes.extraLarge
+    ){
+     Column(
+      Modifier.fillMaxWidth()
+       .background(Brush.linearGradient(listOf(Color(0xFF173F47),Color(0xFF102D35),Color(0xFF142B3D))))
+       .padding(24.dp),
+      verticalArrangement=Arrangement.spacedBy(16.dp),
+      horizontalAlignment=Alignment.CenterHorizontally
+     ){
+      Surface(
+       shape=MaterialTheme.shapes.large,
+       color=Color(0xFF79E0CF).copy(alpha=0.13f),
+       contentColor=accent
+      ){
+       Text(
+        "✦  DODLA DAIRY",
+        modifier=Modifier.padding(horizontal=14.dp,vertical=8.dp),
+        style=MaterialTheme.typography.labelMedium.copy(
+         fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.Bold,letterSpacing=2.2.sp
+        )
+       )
       }
-     }
-     Button(onClick={onLogin(email.trim(),password)},enabled=!loading&&email.isNotBlank()&&password.isNotBlank(),modifier=Modifier.fillMaxWidth().height(50.dp)){
-      if(loading) CircularProgressIndicator(modifier=Modifier.size(22.dp),strokeWidth=2.dp) else Text("LOGIN",style=MaterialTheme.typography.titleMedium.copy(fontWeight=FontWeight.ExtraBold,letterSpacing=1.sp))
+      Text(
+       "Honest Milk",
+       color=Color(0xFFF5FAF8),
+       style=MaterialTheme.typography.headlineLarge.copy(
+        fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.ExtraBold,
+        letterSpacing=(-0.8).sp
+       )
+      )
+      Text(
+       "EMPLOYEE STORE",
+       color=Color(0xFFF0C879),
+       style=MaterialTheme.typography.labelLarge.copy(
+        fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.Bold,letterSpacing=3.sp
+       )
+      )
+      HorizontalDivider(color=Color.White.copy(alpha=0.16f),thickness=1.dp)
+      Column(Modifier.fillMaxWidth(),verticalArrangement=Arrangement.spacedBy(5.dp)){
+       Text(
+        "Welcome back",
+        color=Color(0xFFF5FAF8),
+        style=MaterialTheme.typography.headlineSmall.copy(
+         fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.Bold,letterSpacing=(-0.3).sp
+        )
+       )
+       Text(
+        "Sign in to continue to your counter",
+        color=Color(0xFFB8CFD0),
+        style=MaterialTheme.typography.bodyMedium.copy(fontFamily=FontFamily.SansSerif)
+       )
+      }
+      val fieldColors=OutlinedTextFieldDefaults.colors(
+       focusedTextColor=Color(0xFFF5FAF8),
+       unfocusedTextColor=Color(0xFFF5FAF8),
+       focusedLabelColor=Color(0xFF79E0CF),
+       unfocusedLabelColor=Color(0xFFB8CFD0),
+       focusedPlaceholderColor=Color(0xFF91A9AD),
+       unfocusedPlaceholderColor=Color(0xFF91A9AD),
+       focusedBorderColor=Color(0xFF79E0CF),
+       unfocusedBorderColor=Color(0xFF55767D),
+       cursorColor=Color(0xFF79E0CF),
+       focusedContainerColor=Color.White.copy(alpha=0.045f),
+       unfocusedContainerColor=Color.White.copy(alpha=0.025f),
+       disabledContainerColor=Color.White.copy(alpha=0.02f)
+      )
+      OutlinedTextField(
+       value=email,
+       onValueChange={email=it},
+       label={Text("Email")},
+       placeholder={Text("Enter your email")},
+       singleLine=true,
+       enabled=!loading,
+       modifier=Modifier.fillMaxWidth(),
+       shape=MaterialTheme.shapes.large,
+       colors=fieldColors
+      )
+      OutlinedTextField(
+       value=password,
+       onValueChange={password=it},
+       label={Text("Password")},
+       placeholder={Text("Enter your password")},
+       singleLine=true,
+       enabled=!loading,
+       visualTransformation=PasswordVisualTransformation(),
+       modifier=Modifier.fillMaxWidth(),
+       shape=MaterialTheme.shapes.large,
+       colors=fieldColors
+      )
+      AnimatedVisibility(
+       visible=error!=null,
+       enter=fadeIn(animationSpec=tween(220))+slideInVertically(initialOffsetY={it/5},animationSpec=tween(220))
+      ){
+       error?.let{
+        Surface(
+         Modifier.fillMaxWidth(),
+         shape=MaterialTheme.shapes.medium,
+         color=Color(0xFF5B2930),
+         contentColor=Color(0xFFFFDAD6)
+        ){
+         Text(it,modifier=Modifier.padding(12.dp),style=MaterialTheme.typography.bodyMedium)
+        }
+       }
+      }
+      Button(
+       onClick={onLogin(email.trim(),password)},
+       enabled=!loading&&email.isNotBlank()&&password.isNotBlank(),
+       modifier=Modifier.fillMaxWidth().height(54.dp),
+       shape=MaterialTheme.shapes.large,
+       colors=ButtonDefaults.buttonColors(
+        containerColor=Color(0xFF79E0CF),
+        contentColor=Color(0xFF102D35),
+        disabledContainerColor=Color(0xFF79E0CF).copy(alpha=0.35f),
+        disabledContentColor=Color(0xFF102D35).copy(alpha=0.65f)
+       )
+      ){
+       Crossfade(targetState=loading,animationSpec=tween(220),label="loginButtonState"){busy->
+        if(busy) CircularProgressIndicator(modifier=Modifier.size(22.dp),strokeWidth=2.dp,color=Color(0xFF102D35))
+        else Text(
+         "SIGN IN  →",
+         style=MaterialTheme.typography.titleMedium.copy(
+          fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.ExtraBold,letterSpacing=1.1.sp
+         )
+        )
+       }
+      }
+      Text(
+       "SECURE EMPLOYEE ACCESS",
+       color=Color(0xFF86A5A8),
+       style=MaterialTheme.typography.labelSmall.copy(
+        fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.Medium,letterSpacing=1.8.sp
+       )
+      )
      }
     }
    }
