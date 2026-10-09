@@ -30,8 +30,8 @@ android {
         applicationId = "com.dodla.honestmilk.counter"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "0.3.1"
+        versionCode = 5
+        versionName = "0.3.2"
         buildConfigField("String", "SUPABASE_URL", "\"${supabaseUrl.get()}\"")
         buildConfigField("String", "SUPABASE_PUBLISHABLE_KEY", "\"${supabaseKey.get()}\"")
     }

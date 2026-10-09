@@ -87,7 +87,7 @@ class CounterRepository(context: Context){
  }
 
  suspend fun createEmployee(code:String,name:String,phone:String,department:String):EmployeeRow{
-  require(code.trim().isNotBlank()){"Employee ID is required."}
+  require(code.matches(Regex("\\d{6}"))){"Employee code must contain exactly 6 numeric digits."}
   require(name.trim().isNotBlank()){"Employee name is required."}
   return supabase.postgrest.rpc(
    "create_employee",
