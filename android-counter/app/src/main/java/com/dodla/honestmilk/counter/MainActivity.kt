@@ -26,6 +26,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontFamily
@@ -429,7 +431,7 @@ class MainActivity:ComponentActivity(){
     }
    }
   }
-  if(step==1||step==3) Text(if(step==1) "Select Person" else "Receipt",style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.SemiBold,letterSpacing=0.2.sp))
+  if(step==1||step==3) Text(if(step==1) "Select Employee/Guest" else "Receipt",style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.SemiBold,letterSpacing=0.2.sp))
   if(offlineMode){
    Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.small,color=MaterialTheme.colorScheme.errorContainer){
     Text("OFFLINE MODE — cached counter data is being used.",modifier=Modifier.padding(10.dp),color=MaterialTheme.colorScheme.onErrorContainer)
@@ -580,29 +582,27 @@ class MainActivity:ComponentActivity(){
     Row(horizontalArrangement=Arrangement.spacedBy(12.dp),modifier=Modifier.fillMaxWidth()){
      ElevatedCard(
       colors=CardDefaults.elevatedCardColors(containerColor=WhiteCard),
-      modifier=Modifier.border(1.dp,Teal.copy(alpha=0.45f),MaterialTheme.shapes.medium).weight(1f).height(92.dp).clickable{showNewEmpRegister=true;error=null},
+      modifier=Modifier.border(1.dp,Teal.copy(alpha=0.45f),MaterialTheme.shapes.medium).weight(1f).height(76.dp).clickable{showNewEmpRegister=true;error=null},
       elevation=CardDefaults.elevatedCardElevation(defaultElevation=4.dp)
      ){
-      Column(Modifier.fillMaxSize().padding(12.dp),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally){
-       Text("NEW EMP",style=MaterialTheme.typography.labelLarge)
-       Text("REGISTER",style=MaterialTheme.typography.titleMedium)
+      Column(Modifier.fillMaxSize().padding(8.dp),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally){
+       Text("NEW EMP",style=MaterialTheme.typography.labelMedium)
+       Text("REGISTER",style=MaterialTheme.typography.titleSmall)
       }
      }
      ElevatedCard(
       colors=CardDefaults.elevatedCardColors(containerColor=WhiteCard),
-      modifier=Modifier.border(1.dp,Teal.copy(alpha=0.45f),MaterialTheme.shapes.medium).weight(1f).height(92.dp).clickable{showAddEmployee=true;error=null},
+      modifier=Modifier.border(1.dp,Teal.copy(alpha=0.45f),MaterialTheme.shapes.medium).weight(1f).height(76.dp).clickable{showAddEmployee=true;error=null},
       elevation=CardDefaults.elevatedCardElevation(defaultElevation=4.dp)
      ){
-      Column(Modifier.fillMaxSize().padding(12.dp),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally){
-       Text("REGISTER AS",style=MaterialTheme.typography.titleMedium)
-       Text("GUEST",style=MaterialTheme.typography.titleMedium)
+      Column(Modifier.fillMaxSize().padding(8.dp),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally){
+       Text("REGISTER AS",style=MaterialTheme.typography.labelMedium)
+       Text("GUEST",style=MaterialTheme.typography.titleSmall)
       }
      }
     }
 
-    Text("EXISTING OR NEW",style=MaterialTheme.typography.labelMedium.copy(letterSpacing=1.sp,fontWeight=FontWeight.ExtraBold))
-
-    Column(verticalArrangement=Arrangement.spacedBy(7.dp)){
+    Column(verticalArrangement=Arrangement.spacedBy(5.dp)){
      employees.forEach{e->
       ElevatedCard(
        colors=CardDefaults.elevatedCardColors(containerColor=Cream),
@@ -619,14 +619,14 @@ class MainActivity:ComponentActivity(){
        },
        elevation=CardDefaults.elevatedCardElevation(defaultElevation=3.dp)
       ){
-       Row(Modifier.fillMaxWidth().padding(10.dp),verticalAlignment=Alignment.CenterVertically){
-        Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){
-         Text(e.name,style=MaterialTheme.typography.titleLarge)
-         Text(e.identifier,style=MaterialTheme.typography.titleMedium)
+       Row(Modifier.fillMaxWidth().padding(horizontal=9.dp,vertical=7.dp),verticalAlignment=Alignment.CenterVertically){
+        Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(2.dp)){
+         Text(e.name,style=MaterialTheme.typography.titleMedium)
+         Text(e.identifier,style=MaterialTheme.typography.titleSmall)
          if(e.department.isNotBlank())Text(e.department,style=MaterialTheme.typography.bodyMedium)
         }
         Surface(shape=MaterialTheme.shapes.small,color=if(e.type=="GUEST") GoldPale else TealPale){
-         Text(e.type,style=MaterialTheme.typography.labelMedium,modifier=Modifier.padding(horizontal=10.dp,vertical=6.dp))
+         Text(e.type,style=MaterialTheme.typography.labelMedium,modifier=Modifier.padding(horizontal=8.dp,vertical=4.dp))
         }
        }
       }
@@ -636,13 +636,13 @@ class MainActivity:ComponentActivity(){
      AlertDialog(onDismissRequest={if(!registeringEmp)showNewEmpRegister=false},containerColor=Cream,titleContentColor=Ink,textContentColor=Ink,title={Text("NEW EMP REGISTER",color=Ink)},text={
       Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(10.dp)){
        Text("This will be registered as an employee, not a guest.",color=Ink,style=MaterialTheme.typography.bodyMedium)
-       OutlinedTextField(newEmpCode,{newEmpCode=it},colors=OutlinedTextFieldDefaults.colors(focusedTextColor=Ink,unfocusedTextColor=Ink,focusedLabelColor=Teal,unfocusedLabelColor=Ink,focusedBorderColor=Teal,unfocusedBorderColor=Border),label={Text("Employee ID *",color=Ink)},singleLine=true,enabled=!registeringEmp,modifier=Modifier.fillMaxWidth())
+       OutlinedTextField(value=newEmpCode,onValueChange={newEmpCode=it.filter{ch->ch.isDigit()}.take(6)},keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Number),supportingText={Text("Enter exactly 6 digits",color=Ink.copy(alpha=0.72f))},colors=OutlinedTextFieldDefaults.colors(focusedTextColor=Ink,unfocusedTextColor=Ink,focusedLabelColor=Teal,unfocusedLabelColor=Ink,focusedBorderColor=Teal,unfocusedBorderColor=Border),label={Text("Employee ID *",color=Ink)},singleLine=true,enabled=!registeringEmp,modifier=Modifier.fillMaxWidth())
        OutlinedTextField(newEmpName,{newEmpName=it},colors=OutlinedTextFieldDefaults.colors(focusedTextColor=Ink,unfocusedTextColor=Ink,focusedLabelColor=Teal,unfocusedLabelColor=Ink,focusedBorderColor=Teal,unfocusedBorderColor=Border),label={Text("Name *",color=Ink)},singleLine=true,enabled=!registeringEmp,modifier=Modifier.fillMaxWidth())
        OutlinedTextField(newEmpPhone,{newEmpPhone=it},colors=OutlinedTextFieldDefaults.colors(focusedTextColor=Ink,unfocusedTextColor=Ink,focusedLabelColor=Teal,unfocusedLabelColor=Ink,focusedBorderColor=Teal,unfocusedBorderColor=Border),label={Text("Mobile (optional)",color=Ink)},singleLine=true,enabled=!registeringEmp,modifier=Modifier.fillMaxWidth())
        OutlinedTextField(newEmpDepartment,{newEmpDepartment=it},colors=OutlinedTextFieldDefaults.colors(focusedTextColor=Ink,unfocusedTextColor=Ink,focusedLabelColor=Teal,unfocusedLabelColor=Ink,focusedBorderColor=Teal,unfocusedBorderColor=Border),label={Text("Department (optional)",color=Ink)},singleLine=true,enabled=!registeringEmp,modifier=Modifier.fillMaxWidth())
       }
      },confirmButton={
-      Button(modifier=Modifier.height(46.dp),enabled=!registeringEmp&&newEmpCode.trim().isNotBlank()&&newEmpName.trim().isNotBlank()&&repo.isOnline(),onClick={
+      Button(modifier=Modifier.height(46.dp),enabled=!registeringEmp&&newEmpCode.matches(Regex("\\d{6}"))&&newEmpName.trim().isNotBlank()&&repo.isOnline(),onClick={
        registeringEmp=true;error=null
        scope.launch{
         runCatching{repo.createEmployee(newEmpCode,newEmpName,newEmpPhone,newEmpDepartment)}
