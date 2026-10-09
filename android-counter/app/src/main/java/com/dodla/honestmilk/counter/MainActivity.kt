@@ -593,7 +593,7 @@ class MainActivity:ComponentActivity(){
       modifier=Modifier.border(1.dp,Teal.copy(alpha=0.45f),MaterialTheme.shapes.medium).weight(1f).height(64.dp).clickable{showAddEmployee=true;error=null},
       elevation=CardDefaults.elevatedCardElevation(defaultElevation=4.dp)
      ){
-      Column(Modifier.fillMaxSize().padding(6.dp),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterVertically){
+      Column(Modifier.fillMaxSize().padding(6.dp),verticalArrangement=Arrangement.Center,horizontalAlignment=Alignment.CenterHorizontally){
        Text("REGISTER AS",style=MaterialTheme.typography.labelSmall)
        Text("GUEST",style=MaterialTheme.typography.titleSmall)
       }
