@@ -42,7 +42,7 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 
-private const val DAIRY_BG="https://images.unsplash.com/photo-1573731399281-6540bc50ed91?auto=format&fit=crop&fm=jpg&q=100&w=2600"
+private const val DAIRY_BG="https://images.unsplash.com/photo-1573731399281-6540bc50ed91?auto=format&fit=crop&fm=jpg&q=100&w=3200"
 private val Ink=Color(0xFF0E1B2A)
 private val Cream=Color(0xFFF8F4E8)
 private val WhiteCard=Color(0xFFFFFFFF)
@@ -55,7 +55,7 @@ private val Border=Color(0xFFB7C5C7)
 @Composable
 private fun DairyBackground(tint:Color=Color(0xFF12344A)){
  Box(Modifier.fillMaxSize()){
-  AsyncImage(model=DAIRY_BG,contentDescription="Dairy farm and cow background",modifier=Modifier.fillMaxSize().graphicsLayer{alpha=0.46f},contentScale=ContentScale.Crop)
+  AsyncImage(model=DAIRY_BG,contentDescription="Dairy farm and cow background",modifier=Modifier.fillMaxSize().graphicsLayer{alpha=0.70f},contentScale=ContentScale.Crop)
   Box(Modifier.fillMaxSize().background(tint.copy(alpha=0.12f)))
   Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.White.copy(alpha=0.03f),Color.Black.copy(alpha=0.01f)))))
  }
@@ -263,7 +263,7 @@ class MainActivity:ComponentActivity(){
    2->Color(0xFF70402B)
    else->Color(0xFF17604C)
   })
-  Box(Modifier.fillMaxSize().background(Color.White.copy(alpha=0.05f)))
+  Box(Modifier.fillMaxSize().background(Color.White.copy(alpha=0.015f)))
  Column(Modifier.fillMaxSize().padding(horizontal=14.dp,vertical=8.dp),verticalArrangement=Arrangement.spacedBy(7.dp)){
   Card(
    Modifier.fillMaxWidth(),
@@ -301,7 +301,7 @@ class MainActivity:ComponentActivity(){
     }
    }
   }
-  Text(when(step){0->"Take Products";1->"Select Person";2->"Review Order";else->"Receipt"},style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.SemiBold,letterSpacing=0.2.sp))
+  if(step==1||step==3) Text(if(step==1) "Select Person" else "Receipt",style=MaterialTheme.typography.titleLarge.copy(fontFamily=FontFamily.SansSerif,fontWeight=FontWeight.SemiBold,letterSpacing=0.2.sp))
   if(offlineMode){
    Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.small,color=MaterialTheme.colorScheme.errorContainer){
     Text("OFFLINE MODE — cached counter data is being used.",modifier=Modifier.padding(10.dp),color=MaterialTheme.colorScheme.onErrorContainer)
