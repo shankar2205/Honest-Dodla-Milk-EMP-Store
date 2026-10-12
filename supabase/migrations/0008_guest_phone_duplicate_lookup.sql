@@ -17,10 +17,11 @@ begin
 
   v_digits := regexp_replace(coalesce(p_phone, ''), '[^0-9]', '', 'g');
   if v_digits = '' then
-    return null;
+    return;
   end if;
 
   select e.*
+    into v_employee
   from public.employees e
   where e.active = true
     and e.id_type = 'GUEST'
@@ -28,6 +29,9 @@ begin
   order by e.created_at desc nulls last
   limit 1;
 
+  if found then
+    return next v_employee;
+  end if;
   return;
 end;
 $$;
