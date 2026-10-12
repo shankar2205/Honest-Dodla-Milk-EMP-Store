@@ -11,7 +11,7 @@ declare
   v_employee public.employees;
   v_digits text;
 begin
-  if private.current_user_role() not in ('ADMIN', 'OPERATOR') then
+  if public.current_user_role() not in ('ADMIN', 'OPERATOR') then
     raise exception 'Not authorized';
   end if;
 
