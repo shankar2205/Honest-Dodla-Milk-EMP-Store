@@ -47,7 +47,7 @@ export default function NewTransactionPage() {
         supabase.from("product_variants").select("id,product_id,variant_name,unit_volume_ml,price,products!inner(active)").eq("active", true).eq("products.active", true).order("variant_name"),
       ]);
       const firstError = employeeResult.error || productResult.error || variantResult.error;
-      if (firstError) setError(firstError.message);
+      if (firstError) setError("Could not load employees or products. Check your connection and access, then refresh.");
       setEmployees((employeeResult.data ?? []) as Employee[]);
       setProducts((productResult.data ?? []) as Product[]);
       setVariants((variantResult.data ?? []) as Variant[]);
@@ -137,7 +137,7 @@ export default function NewTransactionPage() {
       .from("product_variants").select("id,price").in("id", variantIds).eq("active", true);
 
     if (variantError) {
-      setError(variantError.message);
+      setError("Could not verify current product prices. Refresh and try again.");
       setSaving(false);
       return;
     }
@@ -164,7 +164,7 @@ export default function NewTransactionPage() {
 
     const { error: insertError } = await supabase.from("transactions").insert(rows);
     if (insertError) {
-      setError(insertError.message);
+      setError("Transaction could not be saved. Check your connection and try again. If it still fails, ask an administrator to review access and product status.");
       setSaving(false);
       return;
     }

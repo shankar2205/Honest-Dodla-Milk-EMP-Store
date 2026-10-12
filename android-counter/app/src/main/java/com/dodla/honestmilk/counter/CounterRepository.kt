@@ -11,6 +11,8 @@ import io.github.jan.supabase.postgrest.from
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import java.util.UUID
 
@@ -74,7 +76,15 @@ class CounterRepository(context: Context){
   }
  }
 
- suspend fun createGuestEmployee(name:String,phone:String,department:String):EmployeeRow{
+ suspend fun findGuestByPhone(phone:String):EmployeeRow?{
+  if(phone.filter{it.isDigit()}.isBlank()) return null
+  return supabase.postgrest.rpc(
+   "find_guest_by_phone",
+   buildJsonObject { put("p_phone",phone.trim()) }
+  ).decodeList<EmployeeRow>().firstOrNull()
+ }
+
+  suspend fun createGuestEmployee(name:String,phone:String,department:String):EmployeeRow{
   require(name.trim().isNotBlank()){"Guest name is required."}
   return supabase.postgrest.rpc(
    "create_guest_employee",
@@ -163,10 +173,22 @@ class CounterRepository(context: Context){
    return runCatching {
     supabase.from("transactions").insert(inserts){select()}.decodeList<SavedTransactionRow>()
    }.getOrElse {
-    // The request may have reached the server even if the client lost the response.
-    // Queue the same stable IDs so sync can safely reconcile the result.
-    offline.addPending(pending)
-    pending.map{SavedTransactionRow(it.id,it.transactionAt)}
+    // The request may have committed even if the client lost the response.
+    // Reconcile stable IDs before reporting a pending receipt.
+    val confirmed = inserts.mapNotNull { insert ->
+     runCatching {
+      supabase.from("transactions").select {
+       filter { eq("id",insert.id) }
+      }.decodeList<SavedTransactionRow>().firstOrNull()
+     }.getOrNull()
+    }
+    if(confirmed.size == inserts.size) {
+     confirmed
+    } else {
+     // Retain the original IDs; sync checks them again before retrying.
+     withContext(Dispatchers.IO) { offline.addPending(pending) }
+     pending.map{SavedTransactionRow(it.id,it.transactionAt)}
+    }
    }
   }
   offline.addPending(pending)
@@ -199,7 +221,7 @@ class CounterRepository(context: Context){
     if(existing.any{it.id==p.id}) successful.add(p.id)
    }
   }
-  offline.removePending(successful)
+  withContext(Dispatchers.IO) { offline.removePending(successful) }
   return successful.size
  }
 

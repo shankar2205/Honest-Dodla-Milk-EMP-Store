@@ -18,6 +18,7 @@ data class PendingTransaction(
 class OfflineStore(context: Context) {
     private val prefs = context.applicationContext.getSharedPreferences("honest_milk_offline", Context.MODE_PRIVATE)
     private val json = Json { ignoreUnknownKeys = true }
+    private val pendingLock = Any()
 
     fun saveProducts(rows: List<ProductRow>, variants: List<VariantRow>) {
         prefs.edit()
@@ -46,22 +47,31 @@ class OfflineStore(context: Context) {
     fun loadSummary(employeeId: String): EmployeeSummary? =
         prefs.getString("summary_$employeeId", null)?.let { runCatching { json.decodeFromString<EmployeeSummary>(it) }.getOrNull() }
 
-    fun pendingTransactions(): List<PendingTransaction> =
+    fun pendingTransactions(): List<PendingTransaction> = synchronized(pendingLock) {
         prefs.getString("pending_transactions", null)?.let {
             runCatching { json.decodeFromString<List<PendingTransaction>>(it) }.getOrNull()
         } ?: emptyList()
+    }
 
-    fun addPending(transactions: List<PendingTransaction>) {
+    fun addPending(transactions: List<PendingTransaction>) = synchronized(pendingLock) {
         val merged = (pendingTransactions() + transactions).distinctBy { it.id }
-        prefs.edit().putString("pending_transactions", json.encodeToString(merged)).apply()
+        check(prefs.edit().putString("pending_transactions", json.encodeToString(merged)).commit()) {
+            "Could not persist pending transactions locally."
+        }
     }
 
-    fun removePending(ids: Set<String>) {
+    fun removePending(ids: Set<String>) = synchronized(pendingLock) {
         val remaining = pendingTransactions().filterNot { ids.contains(it.id) }
-        prefs.edit().putString("pending_transactions", json.encodeToString(remaining)).apply()
+        check(prefs.edit().putString("pending_transactions", json.encodeToString(remaining)).commit()) {
+            "Could not update pending transactions locally."
+        }
     }
 
-    fun hasPending(id: String): Boolean = pendingTransactions().any { it.id == id }
+    fun hasPending(id: String): Boolean = synchronized(pendingLock) {
+        pendingTransactions().any { it.id == id }
+    }
 
-    fun pendingCount(): Int = pendingTransactions().size
+    fun pendingCount(): Int = synchronized(pendingLock) {
+        pendingTransactions().size
+    }
 }

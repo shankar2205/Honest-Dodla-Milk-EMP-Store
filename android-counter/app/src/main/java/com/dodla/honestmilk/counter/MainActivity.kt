@@ -118,7 +118,7 @@ class MainActivity:ComponentActivity(){
    loginError=null
    runCatching{repo.signIn(email,password)}
     .onSuccess{loggedIn=true}
-    .onFailure{loginError=it.message?.takeIf{m->m.isNotBlank()} ?: "Login failed. Check the email, password, and account access."}
+    .onFailure{loginError="Sign-in failed. Check your email, password, and account access, then try again."}
    checking=false
   }
  }
@@ -318,11 +318,12 @@ class MainActivity:ComponentActivity(){
  var registeringEmp by remember{mutableStateOf(false)}
  var newGuestName by remember{mutableStateOf("")}
  var newGuestPhone by remember{mutableStateOf("")}
+  var guestDuplicateWarning by remember{mutableStateOf<String?>(null)}
  var newGuestDepartment by remember{mutableStateOf("")}
  var addingGuest by remember{mutableStateOf(false)}
  var productQuantities by remember{mutableStateOf<Map<String,Int>>(emptyMap())}
 
- fun loadEmployees(q:String){scope.launch{runCatching{repo.employees(q)}.onSuccess{employees=it.map{r->Employee(r.id,r.name,r.department?:"",r.employee_code?:r.guest_code?:"GUEST",if(r.employee_code!=null)"EMPLOYEE" else "GUEST")}}.onFailure{error=it.message?:"Unable to load employees."}}}
+ fun loadEmployees(q:String){scope.launch{runCatching{repo.employees(q)}.onSuccess{employees=it.map{r->Employee(r.id,r.name,r.department?:"",r.employee_code?:r.guest_code?:"GUEST",if(r.employee_code!=null)"EMPLOYEE" else "GUEST")}}.onFailure{error="Unable to load employees. Check your connection and try again."}}}
  fun addSelectedProductsToCart(){
   val selected=products.mapNotNull{p->
    val q=productQuantities[p.id]?:0
@@ -346,7 +347,7 @@ class MainActivity:ComponentActivity(){
    val vs=repo.variants()
    products=vs.mapNotNull{v->ps.find{it.id==v.product_id}?.let{p->Product(v.id,p.name,v.variant_name,v.price,v.unit_volume_ml)}}
    if(products.isEmpty()) error("No active products are available. Please check the Admin product setup.")
-  }.onFailure{error=it.message?.takeIf{m->m.isNotBlank()} ?: "Unable to load counter data."}
+  }.onFailure{error="Unable to load counter data. Check your connection and try again."}
   offlineMode=!repo.isOnline()
   pendingCount=repo.pendingCount()
   loading=false
@@ -439,7 +440,7 @@ class MainActivity:ComponentActivity(){
   }
   if(pendingCount>0){
    Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.small,color=MaterialTheme.colorScheme.secondaryContainer){
-    Text("Pending sync: $pendingCount transaction(s). They will sync when online.",modifier=Modifier.padding(10.dp),style=MaterialTheme.typography.labelMedium)
+    Text("Pending sync: $pendingCount transaction(s). If this remains after reconnecting, a product may be inactive or its price may have changed. Ask an administrator to review it.",modifier=Modifier.padding(10.dp),style=MaterialTheme.typography.labelMedium)
    }
   }
   error?.let{
@@ -612,7 +613,7 @@ class MainActivity:ComponentActivity(){
         scope.launch{
          runCatching{repo.summary(e.id)}
           .onSuccess{summary=it}
-          .onFailure{if(repo.isOnline())error=it.message?:"Unable to load employee summary."}
+          .onFailure{if(repo.isOnline())error="Unable to load this employee’s summary. Refresh and try again."}
         }
        },
        elevation=CardDefaults.elevatedCardElevation(defaultElevation=3.dp)
@@ -649,8 +650,8 @@ class MainActivity:ComponentActivity(){
           employees=(listOf(e)+employees).distinctBy{it.id};selectedEmployee=e
           newEmpCode="";newEmpName="";newEmpPhone="";newEmpDepartment=""
           showNewEmpRegister=false;summary=null;step=2
-          runCatching{repo.summary(e.id)}.onSuccess{summary=it}.onFailure{if(repo.isOnline())error=it.message?:"Unable to load employee summary."}
-         }.onFailure{error=it.message?:"Unable to register employee."}
+          runCatching{repo.summary(e.id)}.onSuccess{summary=it}.onFailure{if(repo.isOnline())error="Unable to load this employee’s summary. Refresh and try again."}
+         }.onFailure{error="Unable to register employee. Check the six-digit employee code and try again."}
         registeringEmp=false
        }
       }){Text(if(registeringEmp)"REGISTERING..." else "REGISTER & CONTINUE")}
@@ -667,7 +668,7 @@ class MainActivity:ComponentActivity(){
        Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(10.dp)){
         Text("This will be added as a guest employee only.",color=Ink,style=MaterialTheme.typography.bodyMedium)
         OutlinedTextField(newGuestName,{newGuestName=it},colors=OutlinedTextFieldDefaults.colors(focusedTextColor=Ink,unfocusedTextColor=Ink,focusedLabelColor=Teal,unfocusedLabelColor=Ink,focusedBorderColor=Teal,unfocusedBorderColor=Border),label={Text("Name *",color=Ink)},singleLine=true,enabled=!addingGuest,modifier=Modifier.fillMaxWidth())
-        OutlinedTextField(newGuestPhone,{newGuestPhone=it},colors=OutlinedTextFieldDefaults.colors(focusedTextColor=Ink,unfocusedTextColor=Ink,focusedLabelColor=Teal,unfocusedLabelColor=Ink,focusedBorderColor=Teal,unfocusedBorderColor=Border),label={Text("Mobile (optional)",color=Ink)},singleLine=true,enabled=!addingGuest,modifier=Modifier.fillMaxWidth())
+        OutlinedTextField(newGuestPhone,{newGuestPhone=it;guestDuplicateWarning=null},colors=OutlinedTextFieldDefaults.colors(focusedTextColor=Ink,unfocusedTextColor=Ink,focusedLabelColor=Teal,unfocusedLabelColor=Ink,focusedBorderColor=Teal,unfocusedBorderColor=Border),label={Text("Mobile (optional)",color=Ink)},singleLine=true,enabled=!addingGuest,modifier=Modifier.fillMaxWidth())
         OutlinedTextField(newGuestDepartment,{newGuestDepartment=it},colors=OutlinedTextFieldDefaults.colors(focusedTextColor=Ink,unfocusedTextColor=Ink,focusedLabelColor=Teal,unfocusedLabelColor=Ink,focusedBorderColor=Teal,unfocusedBorderColor=Border),label={Text("Department (optional)",color=Ink)},singleLine=true,enabled=!addingGuest,modifier=Modifier.fillMaxWidth())
        }
       },
@@ -676,6 +677,21 @@ class MainActivity:ComponentActivity(){
         addingGuest=true
         error=null
         scope.launch{
+         if(guestDuplicateWarning==null && newGuestPhone.isNotBlank()){
+          val duplicateResult=runCatching{repo.findGuestByPhone(newGuestPhone)}
+          if(duplicateResult.isFailure){
+           error="Could not check for an existing guest. Please check your connection and try again."
+           addingGuest=false
+           return@launch
+          }
+          val duplicate=duplicateResult.getOrNull()
+          if(duplicate!=null){
+           guestDuplicateWarning="A guest named ${duplicate.name} is already registered with this mobile number. Tap Continue Anyway only if this is a different person."
+           error=guestDuplicateWarning
+           addingGuest=false
+           return@launch
+          }
+         }
          runCatching{repo.createGuestEmployee(newGuestName,newGuestPhone,newGuestDepartment)}
           .onSuccess{guest->
            val e=Employee(guest.id,guest.name,guest.department.orEmpty(),guest.guest_code?:"GUEST","GUEST")
@@ -687,14 +703,14 @@ class MainActivity:ComponentActivity(){
            showAddEmployee=false
            summary=null
            step=2
-           runCatching{repo.summary(e.id)}.onSuccess{summary=it}.onFailure{if(repo.isOnline())error=it.message?:"Unable to load employee summary."}
+           runCatching{repo.summary(e.id)}.onSuccess{summary=it}.onFailure{if(repo.isOnline())error="Unable to load this employee’s summary. Refresh and try again."}
           }
-          .onFailure{error=it.message?:"Unable to add guest employee."}
+          .onFailure{error="Unable to add guest. Check your connection and try again."}
          addingGuest=false
         }
-       }){Text(if(addingGuest)"ADDING..." else "ADD & CONTINUE")}
+       }){Text(if(addingGuest)"ADDING..." else if(guestDuplicateWarning!=null)"CONTINUE ANYWAY" else "ADD & CONTINUE")}
       },
-      dismissButton={TextButton(onClick={showAddEmployee=false},enabled=!addingGuest){Text("CANCEL")}}
+      dismissButton={TextButton(onClick={showAddEmployee=false;guestDuplicateWarning=null},enabled=!addingGuest){Text("CANCEL")}}
      )
     }
    }
@@ -880,7 +896,7 @@ class MainActivity:ComponentActivity(){
           offlineMode=pending||!repo.isOnline()
           step=3
          }
-         .onFailure{error=it.message?:"Unable to save transaction."}
+         .onFailure{error="Unable to save transaction. Review the product prices and connection, then try again."}
         saving=false
        }
       },

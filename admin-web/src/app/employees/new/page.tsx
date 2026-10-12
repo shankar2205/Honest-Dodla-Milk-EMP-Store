@@ -10,21 +10,27 @@ export default function NewEmployeePage() {
   const router = useRouter();
   const [name,setName]=useState(""); const [idType,setIdType]=useState("EMPLOYEE"); const [code,setCode]=useState("");
   const [generated,setGenerated]=useState(""); const [department,setDepartment]=useState(""); const [phone,setPhone]=useState("");
-  const [error,setError]=useState(""); const [saving,setSaving]=useState(false);
+  const [error,setError]=useState(""); const [saving,setSaving]=useState(false); const [duplicateWarning,setDuplicateWarning]=useState("");
 
   async function submit(e:FormEvent) {
     e.preventDefault(); setError(""); setSaving(true);
+    if(idType==="GUEST" && phone.trim() && !duplicateWarning) {
+      const {data:matches,error:lookupError}=await supabase.rpc("find_guest_by_phone",{p_phone:phone.trim()});
+      if(lookupError){setError("Could not check whether this guest is already registered. Check your connection and try again.");setSaving(false);return;}
+      const match=Array.isArray(matches)?matches[0]:matches;
+      if(match){setDuplicateWarning(`A guest named ${match.name} is already registered with this mobile number. Continue only if this is a different person.`);setSaving(false);return;}
+    }
     let guestCode=code.trim();
     if(idType==="GUEST" && !guestCode) {
       const {data,error:e}=await supabase.rpc("next_guest_code");
-      if(e){setError(e.message);setSaving(false);return;}
+      if(e){setError("Could not generate a guest ID. Check your connection and try again.");setSaving(false);return;}
       guestCode=data; setCode(guestCode); setGenerated(guestCode);
     }
     const payload = idType==="EMPLOYEE"
       ? {name,id_type:"EMPLOYEE",employee_code:code.trim(),guest_code:null,department:department||null,phone:null}
       : {name,id_type:"GUEST",employee_code:null,guest_code:guestCode,department:department||null,phone:phone||null};
     const {error}=await supabase.from("employees").insert(payload as any);
-    if(error){setError(error.message);setSaving(false);return;}
+    if(error){setError("Could not save the employee. Check the employee ID or guest ID for duplicates, and confirm you have administrator access.");setSaving(false);return;}
     router.replace("/employees");
   }
 
@@ -35,9 +41,9 @@ export default function NewEmployeePage() {
       <div className="field"><label>Name</label><input value={name} onChange={e=>setName(e.target.value)} required /></div>
       <div className="field"><label>{idType==="EMPLOYEE" ? "Employee ID" : "Guest ID"}</label><input value={code} onChange={e=>setCode(e.target.value.toUpperCase())} placeholder={idType==="EMPLOYEE" ? "EMP1025" : "Leave blank to generate"} required={idType==="EMPLOYEE"} />{generated&&<p className="helper">Permanent Guest ID generated: {generated}</p>}</div>
       <div className="field"><label>Department</label><input value={department} onChange={e=>setDepartment(e.target.value)} /></div>
-      {idType==="GUEST" && <div className="field"><label>Phone</label><input value={phone} onChange={e=>setPhone(e.target.value)} /></div>}
-      {error && <p className="error-text">{error}</p>}
-      <div className="form-actions"><Link className="secondary-button" href="/employees">Cancel</Link><button className="primary-button" disabled={saving}>{saving?"Saving...":"Save employee"}</button></div>
+      {idType==="GUEST" && <div className="field"><label>Phone</label><input value={phone} onChange={e=>{setPhone(e.target.value);setDuplicateWarning("");}} /></div>}
+      {duplicateWarning && <p className="error-text">{duplicateWarning}</p>}{error && <p className="error-text">{error}</p>}
+      <div className="form-actions"><Link className="secondary-button" href="/employees">Cancel</Link><button className="primary-button" disabled={saving}>{saving?"Saving...":duplicateWarning?"Continue anyway":"Save employee"}</button></div>
     </form></section>
   </div></AdminShell>;
 }

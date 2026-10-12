@@ -13,13 +13,13 @@ export default function NewProductPage(){
   async function submit(e:FormEvent){
     e.preventDefault(); setError(""); setSaving(true);
     let productId=""; const {data:existing,error:findError}=await supabase.from("products").select("id").eq("name",name.trim()).maybeSingle();
-    if(findError){setError(findError.message);setSaving(false);return;}
+    if(findError){setError("Could not check for an existing product. Check your connection and try again.");setSaving(false);return;}
     if(existing) productId=existing.id; else {
       const {data:created,error:createError}=await supabase.from("products").insert({name:name.trim()}).select("id").single();
-      if(createError||!created){setError(createError?.message||"Could not create product.");setSaving(false);return;} productId=created.id;
+      if(createError||!created){setError("Could not create the product. Check the name and administrator access, then try again.");setSaving(false);return;} productId=created.id;
     }
     const {error:variantError}=await supabase.from("product_variants").insert({product_id:productId,variant_name:variant.trim(),unit_volume_ml:Number(volume),price:Number(price)});
-    if(variantError){setError(variantError.message);setSaving(false);return;} router.replace("/products");
+    if(variantError){setError("The product was found or created, but its variant could not be saved. Check whether this variant already exists and try again.");setSaving(false);return;} router.replace("/products");
   }
 
   return <AdminShell><div className="main">
