@@ -43,7 +43,13 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
         return;
       }
 
-      const userRole = String(profile.role).toUpperCase() as Role;
+      const normalizedRole = String(profile.role).toUpperCase();
+      if (normalizedRole !== "ADMIN" && normalizedRole !== "OPERATOR") {
+        await supabase.auth.signOut();
+        if (active) router.replace("/login");
+        return;
+      }
+      const userRole = normalizedRole as Role;
       if (active) {
         setRole(userRole);
         setCheckingAccess(false);
