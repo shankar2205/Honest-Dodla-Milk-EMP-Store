@@ -22,6 +22,7 @@ import java.util.UUID
 @Serializable data class ProfileRow(val id:String,val display_name:String,val role:String,val active:Boolean)
 @Serializable data class TransactionInsert(val id:String,val employee_id:String,val product_variant_id:String,val quantity:Int,val unit_price:Double,val operator_id:String,val transaction_at:String?=null)
 @Serializable data class TransactionHistoryRow(val product_variant_id:String,val quantity:Int,val unit_price:Double)
+@Serializable data class DailySalesRow(val product_name:String,val variant_name:String,val quantity_sold:Long,val total_litres:Double,val transaction_count:Long)
 @Serializable data class SavedTransactionRow(val id:String,val transaction_at:String)
 @Serializable data class TransactionLine(val variantId:String,val quantity:Int,val unitPrice:Double)
 @Serializable data class SavedTransactionBatch(val rows:List<SavedTransactionRow>)
@@ -137,6 +138,16 @@ class CounterRepository(context: Context){
    }
   }
   return rows.map{it to score(it)}.filter{it.second<99}.sortedWith(compareBy<Pair<EmployeeRow,Int>>{it.second}.thenBy{it.first.name}).take(15).map{it.first}
+ }
+
+ suspend fun dailySales(start:String,end:String):List<DailySalesRow>{
+  return supabase.postgrest.rpc(
+   "operator_daily_sales",
+   buildJsonObject {
+    put("p_start",start)
+    put("p_end",end)
+   }
+  ).decodeList<DailySalesRow>()
  }
 
  suspend fun summary(employeeId:String):EmployeeSummary{
