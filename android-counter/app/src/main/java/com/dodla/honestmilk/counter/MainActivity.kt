@@ -440,7 +440,7 @@ class MainActivity:ComponentActivity(){
   }
   if(pendingCount>0){
    Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.small,color=MaterialTheme.colorScheme.secondaryContainer){
-    Text("Pending sync: $pendingCount transaction(s). They will sync when online.",modifier=Modifier.padding(10.dp),style=MaterialTheme.typography.labelMedium)
+    Text("Pending sync: $pendingCount transaction(s). If this remains after reconnecting, a product may be inactive or its price may have changed. Ask an administrator to review it.",modifier=Modifier.padding(10.dp),style=MaterialTheme.typography.labelMedium)
    }
   }
   error?.let{
