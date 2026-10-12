@@ -118,7 +118,7 @@ class MainActivity:ComponentActivity(){
    loginError=null
    runCatching{repo.signIn(email,password)}
     .onSuccess{loggedIn=true}
-    .onFailure{loginError=it.message?.takeIf{m->m.isNotBlank()} ?: "Login failed. Check the email, password, and account access."}
+    .onFailure{loginError="Sign-in failed. Check your email, password, and account access, then try again."}
    checking=false
   }
  }
