@@ -75,12 +75,12 @@ class CounterRepository(context: Context){
  }
 
  suspend fun findGuestByPhone(phone:String):EmployeeRow?{
-   val digits=phone.filter{it.isDigit()}
-   if(digits.isBlank()) return null
-   val rows=supabase.from("employees").select{filter{eq("active",true)}}
-    .decodeList<EmployeeRow>()
-   return rows.firstOrNull{row->row.id_type=="GUEST" && row.phone.orEmpty().filter{it.isDigit()}==digits}
-  }
+  if(phone.filter{it.isDigit()}.isBlank()) return null
+  return supabase.postgrest.rpc(
+   "find_guest_by_phone",
+   buildJsonObject { put("p_phone",phone.trim()) }
+  ).decodeAs<EmployeeRow?>()
+ }
 
   suspend fun createGuestEmployee(name:String,phone:String,department:String):EmployeeRow{
   require(name.trim().isNotBlank()){"Guest name is required."}
