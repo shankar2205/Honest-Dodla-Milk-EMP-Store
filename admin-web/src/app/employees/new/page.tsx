@@ -17,14 +17,14 @@ export default function NewEmployeePage() {
     let guestCode=code.trim();
     if(idType==="GUEST" && !guestCode) {
       const {data,error:e}=await supabase.rpc("next_guest_code");
-      if(e){setError(e.message);setSaving(false);return;}
+      if(e){setError("Could not generate a guest ID. Check your connection and try again.");setSaving(false);return;}
       guestCode=data; setCode(guestCode); setGenerated(guestCode);
     }
     const payload = idType==="EMPLOYEE"
       ? {name,id_type:"EMPLOYEE",employee_code:code.trim(),guest_code:null,department:department||null,phone:null}
       : {name,id_type:"GUEST",employee_code:null,guest_code:guestCode,department:department||null,phone:phone||null};
     const {error}=await supabase.from("employees").insert(payload as any);
-    if(error){setError(error.message);setSaving(false);return;}
+    if(error){setError("Could not save the employee. Check the employee ID or guest ID for duplicates, and confirm you have administrator access.");setSaving(false);return;}
     router.replace("/employees");
   }
 
