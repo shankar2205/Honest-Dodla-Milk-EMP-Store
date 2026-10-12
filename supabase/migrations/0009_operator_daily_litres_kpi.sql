@@ -41,5 +41,5 @@ begin
 end;
 $$;
 
-revoke all on function public.operator_daily_sales(timestamptz, timestamptz) from public;
+revoke all on function public.operator_daily_sales(timestamptz, timestamptz) from public, anon;
 grant execute on function public.operator_daily_sales(timestamptz, timestamptz) to authenticated;
