@@ -464,7 +464,7 @@ class MainActivity:ComponentActivity(){
         Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
          Text("TOTAL LITRES SOLD",color=Teal,style=MaterialTheme.typography.labelLarge)
          Text(
-          String.format(Locale.getDefault(),"%.3f L",dailySalesRows.sumOf{it.total_litres}),
+          String.format(Locale.getDefault(),"%.1f L",dailySalesRows.sumOf{it.total_litres}),
           color=Ink,
           style=MaterialTheme.typography.headlineLarge.copy(fontWeight=FontWeight.ExtraBold)
          )
@@ -486,7 +486,7 @@ class MainActivity:ComponentActivity(){
             Text(row.product_name,color=Ink,style=MaterialTheme.typography.titleSmall)
             Text(row.variant_name+" · "+row.quantity_sold.toString()+" units",color=Ink.copy(alpha=0.75f),style=MaterialTheme.typography.bodySmall)
            }
-           Text(String.format(Locale.getDefault(),"%.3f L",row.total_litres),color=Teal,style=MaterialTheme.typography.titleMedium)
+           Text(String.format(Locale.getDefault(),"%.1f L",row.total_litres),color=Teal,style=MaterialTheme.typography.titleMedium)
           }
          }
         }
