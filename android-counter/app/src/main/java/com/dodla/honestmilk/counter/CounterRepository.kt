@@ -171,10 +171,22 @@ class CounterRepository(context: Context){
    return runCatching {
     supabase.from("transactions").insert(inserts){select()}.decodeList<SavedTransactionRow>()
    }.getOrElse {
-    // The request may have reached the server even if the client lost the response.
-    // Queue the same stable IDs so sync can safely reconcile the result.
-    offline.addPending(pending)
-    pending.map{SavedTransactionRow(it.id,it.transactionAt)}
+    // The request may have committed even if the client lost the response.
+    // Reconcile stable IDs before reporting a pending receipt.
+    val confirmed = inserts.mapNotNull { insert ->
+     runCatching {
+      supabase.from("transactions").select {
+       filter { eq("id",insert.id) }
+      }.decodeList<SavedTransactionRow>().firstOrNull()
+     }.getOrNull()
+    }
+    if(confirmed.size == inserts.size) {
+     confirmed
+    } else {
+     // Retain the original IDs; sync checks them again before retrying.
+     offline.addPending(pending)
+     pending.map{SavedTransactionRow(it.id,it.transactionAt)}
+    }
    }
   }
   offline.addPending(pending)
