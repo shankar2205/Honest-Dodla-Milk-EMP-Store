@@ -11,6 +11,8 @@ import io.github.jan.supabase.postgrest.from
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import java.util.UUID
 
@@ -184,7 +186,7 @@ class CounterRepository(context: Context){
      confirmed
     } else {
      // Retain the original IDs; sync checks them again before retrying.
-     offline.addPending(pending)
+     withContext(Dispatchers.IO) { offline.addPending(pending) }
      pending.map{SavedTransactionRow(it.id,it.transactionAt)}
     }
    }
@@ -219,7 +221,7 @@ class CounterRepository(context: Context){
     if(existing.any{it.id==p.id}) successful.add(p.id)
    }
   }
-  offline.removePending(successful)
+  withContext(Dispatchers.IO) { offline.removePending(successful) }
   return successful.size
  }
 
