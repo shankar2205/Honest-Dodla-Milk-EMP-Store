@@ -323,7 +323,7 @@ class MainActivity:ComponentActivity(){
  var addingGuest by remember{mutableStateOf(false)}
  var productQuantities by remember{mutableStateOf<Map<String,Int>>(emptyMap())}
 
- fun loadEmployees(q:String){scope.launch{runCatching{repo.employees(q)}.onSuccess{employees=it.map{r->Employee(r.id,r.name,r.department?:"",r.employee_code?:r.guest_code?:"GUEST",if(r.employee_code!=null)"EMPLOYEE" else "GUEST")}}.onFailure{error=it.message?:"Unable to load employees."}}}
+ fun loadEmployees(q:String){scope.launch{runCatching{repo.employees(q)}.onSuccess{employees=it.map{r->Employee(r.id,r.name,r.department?:"",r.employee_code?:r.guest_code?:"GUEST",if(r.employee_code!=null)"EMPLOYEE" else "GUEST")}}.onFailure{error="Unable to load employees. Check your connection and try again."}}}
  fun addSelectedProductsToCart(){
   val selected=products.mapNotNull{p->
    val q=productQuantities[p.id]?:0
@@ -347,7 +347,7 @@ class MainActivity:ComponentActivity(){
    val vs=repo.variants()
    products=vs.mapNotNull{v->ps.find{it.id==v.product_id}?.let{p->Product(v.id,p.name,v.variant_name,v.price,v.unit_volume_ml)}}
    if(products.isEmpty()) error("No active products are available. Please check the Admin product setup.")
-  }.onFailure{error=it.message?.takeIf{m->m.isNotBlank()} ?: "Unable to load counter data."}
+  }.onFailure{error="Unable to load counter data. Check your connection and try again."}
   offlineMode=!repo.isOnline()
   pendingCount=repo.pendingCount()
   loading=false
@@ -613,7 +613,7 @@ class MainActivity:ComponentActivity(){
         scope.launch{
          runCatching{repo.summary(e.id)}
           .onSuccess{summary=it}
-          .onFailure{if(repo.isOnline())error=it.message?:"Unable to load employee summary."}
+          .onFailure{if(repo.isOnline())error="Unable to load this employee’s summary. Refresh and try again."}
         }
        },
        elevation=CardDefaults.elevatedCardElevation(defaultElevation=3.dp)
@@ -650,8 +650,8 @@ class MainActivity:ComponentActivity(){
           employees=(listOf(e)+employees).distinctBy{it.id};selectedEmployee=e
           newEmpCode="";newEmpName="";newEmpPhone="";newEmpDepartment=""
           showNewEmpRegister=false;summary=null;step=2
-          runCatching{repo.summary(e.id)}.onSuccess{summary=it}.onFailure{if(repo.isOnline())error=it.message?:"Unable to load employee summary."}
-         }.onFailure{error=it.message?:"Unable to register employee."}
+          runCatching{repo.summary(e.id)}.onSuccess{summary=it}.onFailure{if(repo.isOnline())error="Unable to load this employee’s summary. Refresh and try again."}
+         }.onFailure{error="Unable to register employee. Check the six-digit employee code and try again."}
         registeringEmp=false
        }
       }){Text(if(registeringEmp)"REGISTERING..." else "REGISTER & CONTINUE")}
@@ -703,9 +703,9 @@ class MainActivity:ComponentActivity(){
            showAddEmployee=false
            summary=null
            step=2
-           runCatching{repo.summary(e.id)}.onSuccess{summary=it}.onFailure{if(repo.isOnline())error=it.message?:"Unable to load employee summary."}
+           runCatching{repo.summary(e.id)}.onSuccess{summary=it}.onFailure{if(repo.isOnline())error="Unable to load this employee’s summary. Refresh and try again."}
           }
-          .onFailure{error=it.message?:"Unable to add guest employee."}
+          .onFailure{error="Unable to add guest. Check your connection and try again."}
          addingGuest=false
         }
        }){Text(if(addingGuest)"ADDING..." else if(guestDuplicateWarning!=null)"CONTINUE ANYWAY" else "ADD & CONTINUE")}
@@ -896,7 +896,7 @@ class MainActivity:ComponentActivity(){
           offlineMode=pending||!repo.isOnline()
           step=3
          }
-         .onFailure{error=it.message?:"Unable to save transaction."}
+         .onFailure{error="Unable to save transaction. Review the product prices and connection, then try again."}
         saving=false
        }
       },
