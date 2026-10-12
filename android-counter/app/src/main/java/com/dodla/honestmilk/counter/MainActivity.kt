@@ -678,7 +678,13 @@ class MainActivity:ComponentActivity(){
         error=null
         scope.launch{
          if(guestDuplicateWarning==null && newGuestPhone.isNotBlank()){
-          val duplicate=runCatching{repo.findGuestByPhone(newGuestPhone)}.getOrElse{null}
+          val duplicateResult=runCatching{repo.findGuestByPhone(newGuestPhone)}
+          if(duplicateResult.isFailure){
+           error="Could not check for an existing guest. Please check your connection and try again."
+           addingGuest=false
+           return@launch
+          }
+          val duplicate=duplicateResult.getOrNull()
           if(duplicate!=null){
            guestDuplicateWarning="A guest named ${duplicate.name} is already registered with this mobile number. Tap Continue Anyway only if this is a different person."
            error=guestDuplicateWarning
