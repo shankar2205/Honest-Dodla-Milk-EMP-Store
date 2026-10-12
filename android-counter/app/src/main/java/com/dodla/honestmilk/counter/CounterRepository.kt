@@ -79,7 +79,7 @@ class CounterRepository(context: Context){
   return supabase.postgrest.rpc(
    "find_guest_by_phone",
    buildJsonObject { put("p_phone",phone.trim()) }
-  ).decodeAs<EmployeeRow?>()
+  ).decodeList<EmployeeRow>().firstOrNull()
  }
 
   suspend fun createGuestEmployee(name:String,phone:String,department:String):EmployeeRow{
