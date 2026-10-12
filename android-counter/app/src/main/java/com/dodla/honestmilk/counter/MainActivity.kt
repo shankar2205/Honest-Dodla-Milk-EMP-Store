@@ -494,7 +494,7 @@ class MainActivity:ComponentActivity(){
       }
       if(pendingCount>0){
        Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.small,color=GoldPale){
-        Text("${pendingCount} transaction(s) are waiting to sync. The KPI includes saved server transactions only, so the total may increase after sync.",modifier=Modifier.padding(10.dp),color=Ink,style=MaterialTheme.typography.bodySmall)
+        Text("${pendingCount} transaction(s) are waiting to sync and are not included. Sync them before treating this report as final; only transactions timestamped today count toward today’s total.",modifier=Modifier.padding(10.dp),color=Ink,style=MaterialTheme.typography.bodySmall)
        }
       }
       if(!repo.isOnline()){
