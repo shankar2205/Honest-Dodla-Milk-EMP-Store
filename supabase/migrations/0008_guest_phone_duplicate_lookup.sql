@@ -2,7 +2,7 @@
 -- Counter operators cannot select the employees table directly under RLS.
 
 create or replace function public.find_guest_by_phone(p_phone text)
-returns public.employees
+returns setof public.employees
 language plpgsql
 security definer
 set search_path = ''
@@ -21,7 +21,6 @@ begin
   end if;
 
   select e.*
-    into v_employee
   from public.employees e
   where e.active = true
     and e.id_type = 'GUEST'
@@ -29,7 +28,7 @@ begin
   order by e.created_at desc nulls last
   limit 1;
 
-  return v_employee;
+  return;
 end;
 $$;
 
