@@ -43,6 +43,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import java.time.Instant
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -322,6 +323,11 @@ class MainActivity:ComponentActivity(){
  var newGuestDepartment by remember{mutableStateOf("")}
  var addingGuest by remember{mutableStateOf(false)}
  var productQuantities by remember{mutableStateOf<Map<String,Int>>(emptyMap())}
+ var showDailySales by remember{mutableStateOf(false)}
+ var dailySalesRows by remember{mutableStateOf<List<DailySalesRow>>(emptyList())}
+ var dailySalesLoading by remember{mutableStateOf(false)}
+ var dailySalesError by remember{mutableStateOf<String?>(null)}
+ var dailySalesDateLabel by remember{mutableStateOf("")}
 
  fun loadEmployees(q:String){scope.launch{runCatching{repo.employees(q)}.onSuccess{employees=it.map{r->Employee(r.id,r.name,r.department?:"",r.employee_code?:r.guest_code?:"GUEST",if(r.employee_code!=null)"EMPLOYEE" else "GUEST")}}.onFailure{error="Unable to load employees. Check your connection and try again."}}}
  fun addSelectedProductsToCart(){
@@ -337,6 +343,23 @@ class MainActivity:ComponentActivity(){
   productQuantities=emptyMap()
  }
  fun cartTotal()=cart.sumOf{it.product.price*it.quantity}
+
+ fun loadDailySales(){
+  val zone=ZoneId.systemDefault()
+  val day=LocalDate.now(zone)
+  val start=day.atStartOfDay(zone).toInstant().toString()
+  val end=day.plusDays(1).atStartOfDay(zone).toInstant().toString()
+  dailySalesDateLabel=day.format(DateTimeFormatter.ofPattern("EEEE, dd MMMM yyyy",Locale.getDefault()))
+  dailySalesLoading=true
+  dailySalesError=null
+  pendingCount=repo.pendingCount()
+  scope.launch{
+   runCatching{repo.dailySales(start,end)}
+    .onSuccess{dailySalesRows=it}
+    .onFailure{dailySalesError="Unable to load today's sales. Check the connection and try again."}
+   dailySalesLoading=false
+  }
+ }
 
  LaunchedEffect(Unit){
   offlineMode=!repo.isOnline()
@@ -407,8 +430,83 @@ class MainActivity:ComponentActivity(){
      Text("HONEST MILK",style=MaterialTheme.typography.headlineSmall.copy(fontFamily=FontFamily.Serif,fontWeight=FontWeight.ExtraBold,letterSpacing=2.sp))
      Text("DODLA EMPLOYEE STORE",style=MaterialTheme.typography.labelMedium)
     }
-    TextButton(onClick=onLogout){Text("LOG OUT")}
+    Row(verticalAlignment=Alignment.CenterVertically){
+     TextButton(onClick={showDailySales=true;loadDailySales()}){Text("DAILY KPI")}
+     TextButton(onClick=onLogout){Text("LOG OUT")}
+    }
    }
+  }
+  if(showDailySales){
+   AlertDialog(
+    onDismissRequest={showDailySales=false},
+    containerColor=Cream,
+    titleContentColor=Ink,
+    textContentColor=Ink,
+    title={Text("Today's Sales KPI",color=Ink)},
+    text={
+     Column(
+      Modifier.heightIn(max=440.dp).verticalScroll(rememberScrollState()),
+      verticalArrangement=Arrangement.spacedBy(10.dp)
+     ){
+      Text(dailySalesDateLabel,color=Ink,style=MaterialTheme.typography.bodyMedium)
+      if(dailySalesLoading) LinearProgressIndicator(Modifier.fillMaxWidth(),color=Teal)
+      dailySalesError?.let{
+       Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.small,color=MaterialTheme.colorScheme.errorContainer){
+        Text(it,modifier=Modifier.padding(10.dp),color=MaterialTheme.colorScheme.onErrorContainer)
+       }
+      }
+      if(!dailySalesLoading&&dailySalesError==null){
+       Card(
+        Modifier.fillMaxWidth(),
+        colors=CardDefaults.cardColors(containerColor=TealPale),
+        border=androidx.compose.foundation.BorderStroke(1.dp,Teal.copy(alpha=0.5f))
+       ){
+        Column(Modifier.fillMaxWidth().padding(16.dp),verticalArrangement=Arrangement.spacedBy(4.dp)){
+         Text("TOTAL LITRES SOLD",color=Teal,style=MaterialTheme.typography.labelLarge)
+         Text(
+          String.format(Locale.getDefault(),"%.3f L",dailySalesRows.sumOf{it.total_litres}),
+          color=Ink,
+          style=MaterialTheme.typography.headlineLarge.copy(fontWeight=FontWeight.ExtraBold)
+         )
+         Text("${dailySalesRows.sumOf{it.quantity_sold}} units · ${dailySalesRows.sumOf{it.transaction_count}} product lines",color=Ink.copy(alpha=0.8f),style=MaterialTheme.typography.bodyMedium)
+        }
+       }
+       Text("PRODUCT BREAKDOWN",color=Ink,style=MaterialTheme.typography.labelLarge)
+       if(dailySalesRows.isEmpty()){
+        Text("No completed sales recorded for today yet.",color=Ink,style=MaterialTheme.typography.bodyMedium)
+       }else{
+        dailySalesRows.forEach{row->
+         Card(
+          Modifier.fillMaxWidth(),
+          colors=CardDefaults.cardColors(containerColor=WhiteCard),
+          border=androidx.compose.foundation.BorderStroke(1.dp,Border)
+         ){
+          Row(Modifier.fillMaxWidth().padding(10.dp),horizontalArrangement=Arrangement.SpaceBetween,verticalAlignment=Alignment.CenterVertically){
+           Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(2.dp)){
+            Text(row.product_name,color=Ink,style=MaterialTheme.typography.titleSmall)
+            Text(row.variant_name+" · "+row.quantity_sold.toString()+" units",color=Ink.copy(alpha=0.75f),style=MaterialTheme.typography.bodySmall)
+           }
+           Text(String.format(Locale.getDefault(),"%.3f L",row.total_litres),color=Teal,style=MaterialTheme.typography.titleMedium)
+          }
+         }
+        }
+       }
+      }
+      if(pendingCount>0){
+       Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.small,color=GoldPale){
+        Text("${pendingCount} transaction(s) are waiting to sync. The KPI includes saved server transactions only, so the total may increase after sync.",modifier=Modifier.padding(10.dp),color=Ink,style=MaterialTheme.typography.bodySmall)
+       }
+      }
+      if(!repo.isOnline()){
+       Surface(Modifier.fillMaxWidth(),shape=MaterialTheme.shapes.small,color=MaterialTheme.colorScheme.errorContainer){
+        Text("Offline: this report requires a connection and does not include unsynced sales.",modifier=Modifier.padding(10.dp),color=MaterialTheme.colorScheme.onErrorContainer,style=MaterialTheme.typography.bodySmall)
+       }
+      }
+     }
+    },
+    confirmButton={TextButton(onClick={loadDailySales()},enabled=!dailySalesLoading){Text("REFRESH")}},
+    dismissButton={TextButton(onClick={showDailySales=false}){Text("CLOSE")}}
+   )
   }
   if(step==0){
    Card(
