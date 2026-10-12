@@ -318,6 +318,7 @@ class MainActivity:ComponentActivity(){
  var registeringEmp by remember{mutableStateOf(false)}
  var newGuestName by remember{mutableStateOf("")}
  var newGuestPhone by remember{mutableStateOf("")}
+  var guestDuplicateWarning by remember{mutableStateOf<String?>(null)}
  var newGuestDepartment by remember{mutableStateOf("")}
  var addingGuest by remember{mutableStateOf(false)}
  var productQuantities by remember{mutableStateOf<Map<String,Int>>(emptyMap())}
@@ -667,7 +668,7 @@ class MainActivity:ComponentActivity(){
        Column(Modifier.verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(10.dp)){
         Text("This will be added as a guest employee only.",color=Ink,style=MaterialTheme.typography.bodyMedium)
         OutlinedTextField(newGuestName,{newGuestName=it},colors=OutlinedTextFieldDefaults.colors(focusedTextColor=Ink,unfocusedTextColor=Ink,focusedLabelColor=Teal,unfocusedLabelColor=Ink,focusedBorderColor=Teal,unfocusedBorderColor=Border),label={Text("Name *",color=Ink)},singleLine=true,enabled=!addingGuest,modifier=Modifier.fillMaxWidth())
-        OutlinedTextField(newGuestPhone,{newGuestPhone=it},colors=OutlinedTextFieldDefaults.colors(focusedTextColor=Ink,unfocusedTextColor=Ink,focusedLabelColor=Teal,unfocusedLabelColor=Ink,focusedBorderColor=Teal,unfocusedBorderColor=Border),label={Text("Mobile (optional)",color=Ink)},singleLine=true,enabled=!addingGuest,modifier=Modifier.fillMaxWidth())
+        OutlinedTextField(newGuestPhone,{newGuestPhone=it;guestDuplicateWarning=null},colors=OutlinedTextFieldDefaults.colors(focusedTextColor=Ink,unfocusedTextColor=Ink,focusedLabelColor=Teal,unfocusedLabelColor=Ink,focusedBorderColor=Teal,unfocusedBorderColor=Border),label={Text("Mobile (optional)",color=Ink)},singleLine=true,enabled=!addingGuest,modifier=Modifier.fillMaxWidth())
         OutlinedTextField(newGuestDepartment,{newGuestDepartment=it},colors=OutlinedTextFieldDefaults.colors(focusedTextColor=Ink,unfocusedTextColor=Ink,focusedLabelColor=Teal,unfocusedLabelColor=Ink,focusedBorderColor=Teal,unfocusedBorderColor=Border),label={Text("Department (optional)",color=Ink)},singleLine=true,enabled=!addingGuest,modifier=Modifier.fillMaxWidth())
        }
       },
@@ -676,6 +677,15 @@ class MainActivity:ComponentActivity(){
         addingGuest=true
         error=null
         scope.launch{
+         if(guestDuplicateWarning==null && newGuestPhone.isNotBlank()){
+          val duplicate=runCatching{repo.findGuestByPhone(newGuestPhone)}.getOrElse{null}
+          if(duplicate!=null){
+           guestDuplicateWarning="A guest named ${duplicate.name} is already registered with this mobile number. Tap Continue Anyway only if this is a different person."
+           error=guestDuplicateWarning
+           addingGuest=false
+           return@launch
+          }
+         }
          runCatching{repo.createGuestEmployee(newGuestName,newGuestPhone,newGuestDepartment)}
           .onSuccess{guest->
            val e=Employee(guest.id,guest.name,guest.department.orEmpty(),guest.guest_code?:"GUEST","GUEST")
@@ -692,9 +702,9 @@ class MainActivity:ComponentActivity(){
           .onFailure{error=it.message?:"Unable to add guest employee."}
          addingGuest=false
         }
-       }){Text(if(addingGuest)"ADDING..." else "ADD & CONTINUE")}
+       }){Text(if(addingGuest)"ADDING..." else if(guestDuplicateWarning!=null)"CONTINUE ANYWAY" else "ADD & CONTINUE")}
       },
-      dismissButton={TextButton(onClick={showAddEmployee=false},enabled=!addingGuest){Text("CANCEL")}}
+      dismissButton={TextButton(onClick={showAddEmployee=false;guestDuplicateWarning=null},enabled=!addingGuest){Text("CANCEL")}}
      )
     }
    }
