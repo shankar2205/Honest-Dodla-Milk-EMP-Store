@@ -47,12 +47,10 @@ export function getBusinessMonthRange(monthString: string) {
   const [year, month] = monthString.split("-").map(Number);
   const nextMonthDate = new Date(Date.UTC(year, month, 1));
   const nextMonth = `${nextMonthDate.getUTCFullYear()}-${String(nextMonthDate.getUTCMonth() + 1).padStart(2, "0")}-01`;
-  return getBusinessDayRange(`${monthString}-01`).start
-    ? {
-        start: new Date(`${monthString}-01T00:00:00${INDIA_OFFSET}`).toISOString(),
-        end: new Date(`${nextMonth}T00:00:00${INDIA_OFFSET}`).toISOString(),
-      }
-    : { start: "", end: "" };
+  return {
+    start: new Date(`${monthString}-01T00:00:00${INDIA_OFFSET}`).toISOString(),
+    end: new Date(`${nextMonth}T00:00:00${INDIA_OFFSET}`).toISOString(),
+  };
 }
 
 export function formatBusinessDateTime(value: string | Date): string {
