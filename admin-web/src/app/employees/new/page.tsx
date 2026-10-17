@@ -14,7 +14,7 @@ export default function NewEmployeePage() {
 
   async function submit(e:FormEvent) {
     e.preventDefault(); setError("");
-    if (idType === "EMPLOYEE" && !/^\\d{6}$/.test(code.trim())) {
+    if (idType === "EMPLOYEE" && !/^\d{6}$/.test(code.trim())) {
       setError("Employee ID must contain exactly 6 digits (0–9 only).");
       return;
     }
@@ -44,7 +44,7 @@ export default function NewEmployeePage() {
     <section className="panel form-panel"><form onSubmit={submit}>
       <div className="field"><label>Employee type</label><select value={idType} onChange={e=>setIdType(e.target.value)}><option value="EMPLOYEE">Employee</option><option value="GUEST">Guest</option></select></div>
       <div className="field"><label>Name</label><input value={name} onChange={e=>setName(e.target.value)} required /></div>
-      <div className="field"><label>{idType==="EMPLOYEE" ? "Employee ID" : "Guest ID"}</label><input value={code} onChange={e=>setCode(idType==="EMPLOYEE" ? e.target.value.replace(/\\D/g, "").slice(0, 6) : e.target.value.toUpperCase())} inputMode={idType==="EMPLOYEE" ? "numeric" : "text"} maxLength={idType==="EMPLOYEE" ? 6 : undefined} pattern={idType==="EMPLOYEE" ? "[0-9]{6}" : undefined} placeholder={idType==="EMPLOYEE" ? "Enter 6 digits" : "Leave blank to generate"} required={idType==="EMPLOYEE"} />{idType==="EMPLOYEE" && <p className="helper">Enter exactly 6 digits (0–9 only).</p>}{generated&&<p className="helper">Permanent Guest ID generated: {generated}</p>}</div>
+      <div className="field"><label>{idType==="EMPLOYEE" ? "Employee ID" : "Guest ID"}</label><input value={code} onChange={e=>setCode(idType==="EMPLOYEE" ? e.target.value.replace(/\D/g, "").slice(0, 6) : e.target.value.toUpperCase())} inputMode={idType==="EMPLOYEE" ? "numeric" : "text"} maxLength={idType==="EMPLOYEE" ? 6 : undefined} pattern={idType==="EMPLOYEE" ? "[0-9]{6}" : undefined} placeholder={idType==="EMPLOYEE" ? "Enter 6 digits" : "Leave blank to generate"} required={idType==="EMPLOYEE"} />{idType==="EMPLOYEE" && <p className="helper">Enter exactly 6 digits (0–9 only).</p>}{generated&&<p className="helper">Permanent Guest ID generated: {generated}</p>}</div>
       <div className="field"><label>Department</label><input value={department} onChange={e=>setDepartment(e.target.value)} /></div>
       {idType==="GUEST" && <div className="field"><label>Phone</label><input value={phone} onChange={e=>{setPhone(e.target.value);setDuplicateWarning("");}} /></div>}
       {duplicateWarning && <p className="error-text">{duplicateWarning}</p>}{error && <p className="error-text">{error}</p>}
