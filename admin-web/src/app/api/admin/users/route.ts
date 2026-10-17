@@ -6,9 +6,10 @@ export const runtime = "nodejs";
 export async function POST(request: NextRequest) {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  // Prefer the current Supabase secret key; retain legacy service-role compatibility.
+  const serverSecretKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!supabaseUrl || !anonKey || !serviceRoleKey) {
+  if (!supabaseUrl || !anonKey || !serverSecretKey) {
     return NextResponse.json(
       { error: "User creation is not configured on the server. Ask the deployment administrator to configure the secure Supabase server key." },
       { status: 503 },
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Enter a valid email address for the Operator login." }, { status: 400 });
   }
 
-  const adminClient = createClient(supabaseUrl, serviceRoleKey, {
+  const adminClient = createClient(supabaseUrl, serverSecretKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
