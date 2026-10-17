@@ -17,6 +17,10 @@ export default function UsersPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newEmail, setNewEmail] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [message, setMessage] = useState("");
 
   const load = () => {
     setLoading(true);
@@ -32,6 +36,45 @@ export default function UsersPage() {
     supabase.auth.getUser().then(({ data }) => setCurrentUserId(data.user?.id ?? ""));
     load();
   }, []);
+
+  async function createOperator(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    setMessage("");
+    setCreating(true);
+
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+    const accessToken = sessionData.session?.access_token;
+    if (sessionError || !accessToken) {
+      setError("Your session has expired. Please sign in again.");
+      setCreating(false);
+      return;
+    }
+
+    try {
+      const response = await fetch("/api/admin/users", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({ displayName: newName, email: newEmail }),
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        setError(result.error || "Could not create the Operator account.");
+      } else {
+        setMessage(result.message || "Operator invitation sent.");
+        setNewName("");
+        setNewEmail("");
+        load();
+      }
+    } catch {
+      setError("Could not contact the server. Check your connection and try again.");
+    } finally {
+      setCreating(false);
+    }
+  }
 
   async function update(id: string, patch: Partial<User>) {
     if (id === currentUserId && ("active" in patch || "role" in patch)) {
@@ -51,8 +94,25 @@ export default function UsersPage() {
           <div><h1>Users</h1><p>Manage Admin and Operator application access.</p></div>
         </header>
         {error && <p className="error-text">{error}</p>}
-        <section className="panel">
-          <p className="helper">Create login accounts in Supabase Authentication, then add the matching profile. Your own account is protected from role or status changes.</p>
+        <section className="panel form-panel">
+          <h2>Create Operator login</h2>
+          <p className="helper">Send an invitation email. The Operator will use the secure link to set their own password. Only an Admin can create Operator accounts.</p>
+          <form onSubmit={createOperator}>
+            <div className="field">
+              <label htmlFor="operator-name">Full name</label>
+              <input id="operator-name" value={newName} onChange={(e) => setNewName(e.target.value)} maxLength={120} required />
+            </div>
+            <div className="field">
+              <label htmlFor="operator-email">Login email</label>
+              <input id="operator-email" type="email" autoComplete="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} maxLength={254} required />
+            </div>
+            <div className="form-actions">
+              <button className="primary-button" type="submit" disabled={creating}>
+                {creating ? "Sending invitation..." : "Create Operator & Send Invite"}
+              </button>
+            </div>
+          </form>
+          {message && <p className="helper" role="status">{message}</p>}
         </section>
         <section className="panel table-panel">
           <table>

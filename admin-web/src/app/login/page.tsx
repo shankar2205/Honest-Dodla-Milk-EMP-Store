@@ -29,7 +29,7 @@ export default function LoginPage() {
     (async () => {
       const url = new URL(window.location.href);
       const code = url.searchParams.get("code");
-      const recoveryHash = window.location.hash.includes("type=recovery");
+      const passwordSetupHash = window.location.hash.includes("type=recovery") || window.location.hash.includes("type=invite");
 
       if (code) {
         const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
@@ -44,7 +44,7 @@ export default function LoginPage() {
       }
 
       const { data } = await supabase.auth.getSession();
-      if (active && data.session && recoveryHash) {
+      if (active && data.session && passwordSetupHash) {
         setRecoveryMode(true);
         setMessage("Enter a new password for your account.");
       }
