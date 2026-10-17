@@ -15,6 +15,14 @@ const navItems = [
 
 type Role = "ADMIN" | "OPERATOR";
 
+function requiresAdmin(pathname: string) {
+  return pathname === "/users" ||
+    pathname === "/employees/new" ||
+    /^\/employees\/[^/]+\/edit\/?$/.test(pathname) ||
+    pathname === "/products/new" ||
+    /^\/products\/[^/]+\/edit\/?$/.test(pathname);
+}
+
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
@@ -53,7 +61,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
       if (active) {
         setRole(userRole);
         setCheckingAccess(false);
-        if (pathname === "/users" && userRole !== "ADMIN") {
+        if (requiresAdmin(pathname) && userRole !== "ADMIN") {
           router.replace("/transactions");
         }
       }
@@ -79,7 +87,7 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
     router.replace("/login");
   }
 
-  if (checkingAccess || !role || (pathname === "/users" && role !== "ADMIN")) {
+  if (checkingAccess || !role || (requiresAdmin(pathname) && role !== "ADMIN")) {
     return <main className="main"><p className="helper">Checking access...</p></main>;
   }
 
