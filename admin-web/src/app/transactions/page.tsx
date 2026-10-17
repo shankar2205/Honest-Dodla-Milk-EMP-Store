@@ -5,6 +5,7 @@ import AdminShell from "../../components/AdminShell";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { fetchAllPages } from "../../lib/fetchAllPages";
+import { formatBusinessDateTime, getBusinessDateString, getBusinessDayRange } from "../../lib/businessTime";
 
 type Tx = {
   id: string;
@@ -19,13 +20,8 @@ type Tx = {
   transaction_at: string;
 };
 
-function localDateString(date: Date) {
-  const offset = date.getTimezoneOffset();
-  return new Date(date.getTime() - offset * 60000).toISOString().slice(0, 10);
-}
-
 export default function TransactionsPage() {
-  const today = localDateString(new Date());
+  const today = getBusinessDateString();
   const [fromDate, setFromDate] = useState(today);
   const [toDate, setToDate] = useState(today);
   const [typeFilter, setTypeFilter] = useState("ALL");
@@ -52,8 +48,8 @@ export default function TransactionsPage() {
       return;
     }
 
-    const endExclusive = new Date(nextToDate + "T00:00:00");
-    endExclusive.setDate(endExclusive.getDate() + 1);
+    const startRange = getBusinessDayRange(nextFromDate);
+    const endRange = getBusinessDayRange(nextToDate);
 
     const { data, error: queryError } = await fetchAllPages<Tx>((from, to) => {
       let query = supabase
@@ -61,8 +57,8 @@ export default function TransactionsPage() {
         .select(
           "id,employee_name,employee_identifier,id_type,product_name,variant_name,quantity,total_volume_litres,total_amount,transaction_at"
         )
-        .gte("transaction_at", new Date(nextFromDate + "T00:00:00").toISOString())
-        .lt("transaction_at", endExclusive.toISOString())
+        .gte("transaction_at", startRange.start)
+        .lt("transaction_at", endRange.end)
         .order("transaction_at", { ascending: false })
         .order("id", { ascending: false });
 
@@ -216,7 +212,7 @@ export default function TransactionsPage() {
       header.map(escape).join(","),
       ...rows.map((row) =>
         [
-          new Date(row.transaction_at).toLocaleString(),
+          formatBusinessDateTime(row.transaction_at),
           row.employee_name,
           row.employee_identifier,
           row.id_type,
@@ -375,7 +371,7 @@ export default function TransactionsPage() {
                rows.length === 0 ? <tr><td colSpan={8}>No transactions match the selected filters.</td></tr> :
                rows.map((row) => (
                 <tr key={row.id}>
-                  <td>{new Date(row.transaction_at).toLocaleString()}</td>
+                  <td>{formatBusinessDateTime(row.transaction_at)}</td>
                   <td><strong>{row.employee_name}</strong></td>
                   <td>{row.employee_identifier}</td>
                   <td>{row.id_type === "GUEST" ? "Guest" : "Employee"}</td>
