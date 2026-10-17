@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import AdminShell from "../../components/AdminShell";
 import { supabase } from "../../lib/supabase";
+import { fetchAllPages } from "../../lib/fetchAllPages";
 
 type Tx = {
   id: string;
@@ -43,13 +44,17 @@ export default function DashboardPage() {
       const start = new Date();
       start.setHours(0, 0, 0, 0);
 
-      const { data, error: queryError } = await supabase
-        .from("transaction_report")
-        .select(
-          "id,employee_name,employee_identifier,id_type,product_name,variant_name,quantity,total_volume_litres,total_amount,transaction_at"
-        )
-        .gte("transaction_at", start.toISOString())
-        .order("transaction_at", { ascending: false });
+      const { data, error: queryError } = await fetchAllPages<Tx>((from, to) =>
+        supabase
+          .from("transaction_report")
+          .select(
+            "id,employee_name,employee_identifier,id_type,product_name,variant_name,quantity,total_volume_litres,total_amount,transaction_at"
+          )
+          .gte("transaction_at", start.toISOString())
+          .order("transaction_at", { ascending: false })
+          .order("id", { ascending: false })
+          .range(from, to)
+      );
 
       if (queryError) {
         setError(queryError.message);
