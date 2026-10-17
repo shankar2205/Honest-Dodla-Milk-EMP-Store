@@ -4,6 +4,7 @@ import AdminShell from "../../components/AdminShell";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "../../lib/supabase";
+import { useRole } from "../../lib/useRole";
 
 type Employee = {
   id: string; name: string; employee_code: string | null; guest_code: string | null;
@@ -11,6 +12,7 @@ type Employee = {
 };
 
 export default function EmployeesPage() {
+  const role = useRole();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -56,7 +58,7 @@ export default function EmployeesPage() {
   }
 
   return <AdminShell><div className="main">
-    <header className="topbar"><div><h1>Employees</h1><p>Manage permanent employee and guest identifiers.</p></div><Link className="primary-button small-button" href="/employees/new">+ Add employee</Link></header>
+    <header className="topbar"><div><h1>Employees</h1><p>View permanent employee and guest identifiers.</p></div>{role === "ADMIN" && <Link className="primary-button small-button" href="/employees/new">+ Add employee</Link>}</header>
     {error && <p className="error-text">{error}</p>}
     <section className="stats-grid">
       <div className="stat-card"><span>Total records</span><strong>{employees.length}</strong></div>
@@ -70,11 +72,11 @@ export default function EmployeesPage() {
       <div className="field"><label>Status</label><select value={statusFilter} onChange={e=>setStatusFilter(e.target.value as typeof statusFilter)}><option value="ACTIVE">Active</option><option value="ALL">All statuses</option><option value="INACTIVE">Inactive</option></select></div>
       <div className="field"><label>Department</label><select value={departmentFilter} onChange={e=>setDepartmentFilter(e.target.value)}><option value="ALL">All departments</option>{departments.map(d=><option key={d} value={d}>{d}</option>)}</select></div>
     </div><div className="form-actions"><button className="secondary-button" onClick={resetFilters}>Reset filters</button></div></section>
-    <section className="panel table-panel"><table><thead><tr><th>Name</th><th>ID</th><th>Type</th><th>Department</th><th>Phone</th><th>Status</th><th>Action</th></tr></thead><tbody>
-      {loading ? <tr><td colSpan={7}>Loading...</td></tr> : filteredEmployees.length === 0 ? <tr><td colSpan={7}>No employees match the current filters.</td></tr> : filteredEmployees.map(employee => <tr key={employee.id}>
+    <section className="panel table-panel"><table><thead><tr><th>Name</th><th>ID</th><th>Type</th><th>Department</th><th>Phone</th><th>Status</th>{role === "ADMIN" && <th>Action</th>}</tr></thead><tbody>
+      {loading ? <tr><td colSpan={role === "ADMIN" ? 7 : 6}>Loading...</td></tr> : filteredEmployees.length === 0 ? <tr><td colSpan={role === "ADMIN" ? 7 : 6}>No employees match the current filters.</td></tr> : filteredEmployees.map(employee => <tr key={employee.id}>
         <td><strong>{employee.name}</strong></td><td>{employee.employee_code || employee.guest_code}</td><td>{employee.id_type === "GUEST" ? "Guest" : "Employee"}</td><td>{employee.department || "—"}</td><td>{employee.phone || "—"}</td>
         <td><span className={`status ${employee.active ? "status-active" : "status-inactive"}`}>{employee.active ? "Active" : "Inactive"}</span></td>
-        <td><Link className="secondary-button" href={`/employees/${employee.id}`}>History</Link>{" "}<Link className="secondary-button" href={`/employees/${employee.id}/edit`}>Edit</Link>{" "}<button className="secondary-button" onClick={()=>toggle(employee)}>{employee.active ? "Deactivate" : "Activate"}</button></td>
+        <td>{role === "ADMIN" ? <><Link className="secondary-button" href={`/employees/${employee.id}`}>History</Link>{" "}<Link className="secondary-button" href={`/employees/${employee.id}/edit`}>Edit</Link>{" "}<button className="secondary-button" onClick={()=>toggle(employee)}>{employee.active ? "Deactivate" : "Activate"}</button></> : <Link className="secondary-button" href={`/employees/${employee.id}`}>History</Link>}</td>
       </tr>)}
     </tbody></table></section>
   </div></AdminShell>;
