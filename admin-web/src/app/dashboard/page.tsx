@@ -5,6 +5,7 @@ import Link from "next/link";
 import AdminShell from "../../components/AdminShell";
 import { supabase } from "../../lib/supabase";
 import { fetchAllPages } from "../../lib/fetchAllPages";
+import { formatBusinessTime, getBusinessDateString, getBusinessDayRange } from "../../lib/businessTime";
 
 type Tx = {
   id: string;
@@ -41,8 +42,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     async function loadDashboard() {
-      const start = new Date();
-      start.setHours(0, 0, 0, 0);
+      const { start, end } = getBusinessDayRange(getBusinessDateString());
 
       const { data, error: queryError } = await fetchAllPages<Tx>((from, to) =>
         supabase
@@ -50,7 +50,8 @@ export default function DashboardPage() {
           .select(
             "id,employee_name,employee_identifier,id_type,product_name,variant_name,quantity,total_volume_litres,total_amount,transaction_at"
           )
-          .gte("transaction_at", start.toISOString())
+          .gte("transaction_at", start)
+          .lt("transaction_at", end)
           .order("transaction_at", { ascending: false })
           .order("id", { ascending: false })
           .range(from, to)
@@ -196,10 +197,7 @@ export default function DashboardPage() {
                 rows.map((row) => (
                   <tr key={row.id}>
                     <td>
-                      {new Date(row.transaction_at).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
+                      {formatBusinessTime(row.transaction_at)}
                     </td>
                     <td>
                       <strong>{row.employee_name}</strong>
