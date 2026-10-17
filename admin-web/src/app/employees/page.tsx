@@ -76,7 +76,7 @@ export default function EmployeesPage() {
       {loading ? <tr><td colSpan={role === "ADMIN" ? 7 : 6}>Loading...</td></tr> : filteredEmployees.length === 0 ? <tr><td colSpan={role === "ADMIN" ? 7 : 6}>No employees match the current filters.</td></tr> : filteredEmployees.map(employee => <tr key={employee.id}>
         <td><strong>{employee.name}</strong></td><td>{employee.employee_code || employee.guest_code}</td><td>{employee.id_type === "GUEST" ? "Guest" : "Employee"}</td><td>{employee.department || "—"}</td><td>{employee.phone || "—"}</td>
         <td><span className={`status ${employee.active ? "status-active" : "status-inactive"}`}>{employee.active ? "Active" : "Inactive"}</span></td>
-        <td>{role === "ADMIN" ? <><Link className="secondary-button" href={`/employees/${employee.id}`}>History</Link>{" "}<Link className="secondary-button" href={`/employees/${employee.id}/edit`}>Edit</Link>{" "}<button className="secondary-button" onClick={()=>toggle(employee)}>{employee.active ? "Deactivate" : "Activate"}</button></> : <Link className="secondary-button" href={`/employees/${employee.id}`}>History</Link>}</td>
+        {role === "ADMIN" ? <td><Link className="secondary-button" href={`/employees/${employee.id}`}>History</Link>{" "}<Link className="secondary-button" href={`/employees/${employee.id}/edit`}>Edit</Link>{" "}<button className="secondary-button" onClick={()=>toggle(employee)}>{employee.active ? "Deactivate" : "Activate"}</button></td> : <td><Link className="secondary-button" href={`/employees/${employee.id}`}>History</Link></td>}
       </tr>)}
     </tbody></table></section>
   </div></AdminShell>;
