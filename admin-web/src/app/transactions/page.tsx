@@ -4,6 +4,7 @@ import Link from "next/link";
 import AdminShell from "../../components/AdminShell";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import { fetchAllPages } from "../../lib/fetchAllPages";
 
 type Tx = {
   id: string;
@@ -54,21 +55,23 @@ export default function TransactionsPage() {
     const endExclusive = new Date(nextToDate + "T00:00:00");
     endExclusive.setDate(endExclusive.getDate() + 1);
 
-    let query = supabase
-      .from("transaction_report")
-      .select(
-        "id,employee_name,employee_identifier,id_type,product_name,variant_name,quantity,total_volume_litres,total_amount,transaction_at"
-      )
-      .gte("transaction_at", new Date(nextFromDate + "T00:00:00").toISOString())
-      .lt("transaction_at", endExclusive.toISOString())
-      .order("transaction_at", { ascending: false })
-      .limit(5000);
+    const { data, error: queryError } = await fetchAllPages<Tx>((from, to) => {
+      let query = supabase
+        .from("transaction_report")
+        .select(
+          "id,employee_name,employee_identifier,id_type,product_name,variant_name,quantity,total_volume_litres,total_amount,transaction_at"
+        )
+        .gte("transaction_at", new Date(nextFromDate + "T00:00:00").toISOString())
+        .lt("transaction_at", endExclusive.toISOString())
+        .order("transaction_at", { ascending: false })
+        .order("id", { ascending: false });
 
-    if (nextTypeFilter !== "ALL") query = query.eq("id_type", nextTypeFilter);
-    if (nextProductFilter !== "ALL") query = query.eq("product_name", nextProductFilter);
-    if (nextEmployeeFilter !== "ALL") query = query.eq("employee_identifier", nextEmployeeFilter);
+      if (nextTypeFilter !== "ALL") query = query.eq("id_type", nextTypeFilter);
+      if (nextProductFilter !== "ALL") query = query.eq("product_name", nextProductFilter);
+      if (nextEmployeeFilter !== "ALL") query = query.eq("employee_identifier", nextEmployeeFilter);
 
-    const { data, error: queryError } = await query;
+      return query.range(from, to);
+    });
     if (queryError) {
       setError(queryError.message);
       setRows([]);
