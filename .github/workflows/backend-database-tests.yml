@@ -212,8 +212,8 @@ jobs:
             if after_count <> before_count then
               raise exception 'atomicity failure: transaction rows changed from % to %', before_count, after_count;
             end if;
-          end $;
-          do $
+          end $$;
+          do $$
           declare rejected boolean := false;
           begin
             begin
@@ -229,7 +229,7 @@ jobs:
               end if;
             end;
             if not rejected then raise exception 'zero quantity was accepted'; end if;
-          end $;
+          end $$;
           select 'transaction success, rollback, and quantity validation assertions passed' as result;
           SQL
 
