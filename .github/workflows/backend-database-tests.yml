@@ -188,15 +188,28 @@ jobs:
           psql -v ON_ERROR_STOP=1 <<'SQL'
           set request.jwt.claim.sub = '11111111-1111-4111-8111-111111111111';
           set role authenticated;
-          do $$
-          declare n integer;
+          do $
+          declare
+            n integer;
+            created_id uuid;
+            stored_price numeric(10,2);
+            stored_operator uuid;
           begin
-            select count(*) into n from public.create_transaction_batch(
+            select count(*), min(transaction_id) into n, created_id
+            from public.create_transaction_batch(
               '22222222-2222-4222-8222-222222222222',
-              '[{"variant_id":"44444444-4444-4444-8444-444444444444","quantity":2}]'::jsonb
+              '[{"variant_id":"44444444-4444-4444-8444-444444444444","quantity":2,"price":0.01,"operator_id":"55555555-5555-4555-8555-555555555555"}]'::jsonb
             );
             if n <> 1 then raise exception 'expected one inserted transaction, got %', n; end if;
-          end $$;
+            select t.unit_price, t.operator_id into stored_price, stored_operator
+            from public.transactions t where t.id = created_id;
+            if stored_price <> 75 then
+              raise exception 'client-supplied price was trusted: stored % instead of catalog price 75', stored_price;
+            end if;
+            if stored_operator <> '11111111-1111-4111-8111-111111111111'::uuid then
+              raise exception 'client-supplied operator identity was trusted: stored %', stored_operator;
+            end if;
+          end $;
           reset role;
           do $$
           declare before_count bigint; after_count bigint;
