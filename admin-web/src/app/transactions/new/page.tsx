@@ -60,7 +60,7 @@ export default function NewTransactionPage() {
   const variantMap = useMemo(() => new Map(variants.map((variant) => [variant.id, variant])), [variants]);
   const selectedEmployee = employees.find((employee) => employee.id === employeeId);
   const quantityNumber = Number(quantity);
-  const validQuantity = Number.isInteger(quantityNumber) && quantityNumber >= 1;
+  const validQuantity = Number.isInteger(quantityNumber) && quantityNumber >= 1 && quantityNumber <= 10000;
 
   const cartDetails = cart.map((item) => {
     const variant = variantMap.get(item.variantId);
@@ -79,12 +79,21 @@ export default function NewTransactionPage() {
       return;
     }
     if (!variantId || !validQuantity) {
-      setError("Select a product and enter a quantity of at least 1.");
+      setError("Select a product and enter a whole-number quantity from 1 to 10000.");
+      return;
+    }
+    const existing = cart.find((item) => item.variantId === variantId);
+    if (existing && existing.quantity + quantityNumber > 10000) {
+      setError("The total quantity for one product variant cannot exceed 10000.");
+      return;
+    }
+    if (!existing && cart.length >= 100) {
+      setError("A transaction can contain at most 100 product variants.");
       return;
     }
     setCart((current) => {
-      const existing = current.find((item) => item.variantId === variantId);
-      if (existing) {
+      const currentItem = current.find((item) => item.variantId === variantId);
+      if (currentItem) {
         return current.map((item) => item.variantId === variantId ? { ...item, quantity: item.quantity + quantityNumber } : item);
       }
       return [...current, { variantId, quantity: quantityNumber }];
@@ -94,8 +103,8 @@ export default function NewTransactionPage() {
   }
 
   function updateCartQuantity(itemVariantId: string, nextQuantity: string) {
-    const parsed = Math.floor(Number(nextQuantity));
-    if (!Number.isFinite(parsed) || parsed < 1) return;
+    const parsed = Number(nextQuantity);
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 10000) return;
     setCart((current) => current.map((item) => item.variantId === itemVariantId ? { ...item, quantity: parsed } : item));
   }
 
@@ -111,8 +120,12 @@ export default function NewTransactionPage() {
       setError("Select an employee and add at least one product.");
       return;
     }
-    if (cart.some((item) => !Number.isInteger(item.quantity) || item.quantity < 1)) {
-      setError("Quantity must be a whole number of at least 1.");
+    if (cart.length > 100) {
+      setError("A transaction can contain at most 100 product variants.");
+      return;
+    }
+    if (cart.some((item) => !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 10000)) {
+      setError("Each quantity must be a whole number from 1 to 10000.");
       return;
     }
     setSaving(true);
