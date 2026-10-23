@@ -18,8 +18,17 @@ export default function LoginPage() {
   useEffect(() => {
     let active = true;
 
+    const isPasswordSetupLink = () => {
+      const hash = window.location.hash;
+      return hash.includes("type=recovery") || hash.includes("type=invite");
+    };
+
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "PASSWORD_RECOVERY" && active) {
+      if (!active) return;
+
+      // Supabase can finish processing an invite's URL tokens asynchronously.
+      // Listen for that session event as well as checking the URL during startup.
+      if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && isPasswordSetupLink())) {
         setRecoveryMode(true);
         setError("");
         setMessage("Enter a new password for your account.");
@@ -29,24 +38,45 @@ export default function LoginPage() {
     (async () => {
       const url = new URL(window.location.href);
       const code = url.searchParams.get("code");
-      const recoveryHash = window.location.hash.includes("type=recovery");
+      const callbackError = url.searchParams.get("error_description") || url.searchParams.get("error");
+
+      if (callbackError) {
+        if (active) {
+          setError(decodeURIComponent(callbackError.replace(/\+/g, " ")));
+        }
+        return;
+      }
 
       if (code) {
         const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
+        if (!active) return;
+
         if (exchangeError) {
-          if (active) setError("This password-reset link is invalid or has expired. Please request a new link.");
-        } else if (active) {
+          setError("This invitation or password-reset link is invalid or has expired. Please ask an Admin for a fresh invitation.");
+        } else {
           setRecoveryMode(true);
+          setError("");
           setMessage("Enter a new password for your account.");
           window.history.replaceState({}, document.title, url.pathname);
         }
         return;
       }
 
-      const { data } = await supabase.auth.getSession();
-      if (active && data.session && recoveryHash) {
+      const { data, error: sessionError } = await supabase.auth.getSession();
+      if (!active) return;
+
+      if (sessionError) {
+        setError("Could not verify the invitation link. Please open the link again or ask an Admin for a fresh invitation.");
+        return;
+      }
+
+      if (data.session && isPasswordSetupLink()) {
         setRecoveryMode(true);
+        setError("");
         setMessage("Enter a new password for your account.");
+        // Remove sensitive callback tokens from the visible URL after Supabase
+        // has established the session.
+        window.history.replaceState({}, document.title, url.pathname);
       }
     })();
 
