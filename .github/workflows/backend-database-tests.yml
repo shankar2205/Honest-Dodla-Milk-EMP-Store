@@ -235,7 +235,7 @@ jobs:
           end $$;
           set request.jwt.claim.sub = '55555555-5555-4555-8555-555555555555';
           set role authenticated;
-          do $
+          do $$
           declare rejected boolean := false;
           begin
             begin
@@ -251,11 +251,11 @@ jobs:
               end if;
             end;
             if not rejected then raise exception 'inactive operator was allowed to create a transaction'; end if;
-          end $;
+          end $$;
           reset role;
           set request.jwt.claim.sub = '';
           set role authenticated;
-          do $
+          do $$
           declare rejected boolean := false;
           begin
             begin
@@ -271,7 +271,7 @@ jobs:
               end if;
             end;
             if not rejected then raise exception 'unauthenticated transaction was allowed'; end if;
-          end $;
+          end $$;
           reset role;
           select 'transaction success, rollback, quantity, inactive-user, and unauthenticated assertions passed' as result;
           SQL
