@@ -18,7 +18,6 @@ declare
   v_quantity integer;
   v_price numeric(10,2);
   v_transaction_id uuid;
-  v_item_count integer := 0;
 begin
   if v_user_id is null then
     raise exception 'Authentication required' using errcode = '28000';
@@ -41,8 +40,11 @@ begin
     raise exception 'Select an active employee or guest' using errcode = '22023';
   end if;
 
-  if p_items is null or jsonb_typeof(p_items) <> 'array'
-     or jsonb_array_length(p_items) = 0 then
+  if p_items is null or jsonb_typeof(p_items) <> 'array' then
+    raise exception 'Items must be provided as a JSON array' using errcode = '22023';
+  end if;
+
+  if jsonb_array_length(p_items) = 0 then
     raise exception 'At least one item is required' using errcode = '22023';
   end if;
 
@@ -52,8 +54,6 @@ begin
 
   for v_item in select value from jsonb_array_elements(p_items)
   loop
-    v_item_count := v_item_count + 1;
-
     if jsonb_typeof(v_item) <> 'object'
        or coalesce(v_item->>'variant_id', '') = ''
        or coalesce(v_item->>'quantity', '') !~ '^[0-9]+$' then
