@@ -74,18 +74,28 @@ jobs:
       - name: Apply initial schema to disposable database
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/0001_initial_schema.sql
 
-      - name: Provide project helper used by current transaction policies
+      - name: Provide project helper used by legacy employee RPC
         run: |
           psql -v ON_ERROR_STOP=1 <<'SQL'
           create or replace function private.current_user_role()
           returns public.user_role
           language sql stable security definer
           set search_path = ''
-          as $$
+          as $
             select p.role from public.profiles p
             where p.id = auth.uid() and p.active = true
-          $$;
+          $;
           grant execute on function private.current_user_role() to authenticated;
+          SQL
+
+      - name: Apply legacy employee-code migrations in isolation
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/0007_employee_code_text_and_validation.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/0007_enforce_six_digit_employee_codes.sql
+
+      - name: Provide project helper used by current transaction policies
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
           grant select on public.profiles, public.employees, public.products, public.product_variants to authenticated;
           grant insert, select on public.transactions to authenticated;
           SQL
@@ -206,6 +216,14 @@ jobs:
             end;
             if not rejected then raise exception 'invalid employee code was accepted'; end if;
             perform public.create_employee('000002', 'Valid Code Test', null, null);
+            rejected := false;
+            begin
+              insert into public.employees(employee_code, id_type, name, active)
+              values ('12AB56', 'EMPLOYEE', 'Constraint Test', true);
+            exception when check_violation then
+              rejected := true;
+            end;
+            if not rejected then raise exception 'employee-code CHECK constraint did not reject invalid code'; end if;
           end $$;
           reset role;
           select 'employee-code validation assertions passed' as result;
