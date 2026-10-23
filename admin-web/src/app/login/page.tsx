@@ -18,64 +18,97 @@ export default function LoginPage() {
   useEffect(() => {
     let active = true;
 
-    const isPasswordSetupLink = () => {
-      const hash = window.location.hash;
-      return hash.includes("type=recovery") || hash.includes("type=invite");
+    const isPasswordSetupType = (value: string | null) =>
+      value === "recovery" || value === "invite" || value === "signup" || value === "magiclink";
+
+    const showPasswordSetup = () => {
+      if (!active) return;
+      setRecoveryMode(true);
+      setError("");
+      setMessage("Enter a new password for your account.");
     };
 
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
       if (!active) return;
-
-      // Supabase can finish processing an invite's URL tokens asynchronously.
-      // Listen for that session event as well as checking the URL during startup.
-      if (event === "PASSWORD_RECOVERY" || (event === "SIGNED_IN" && isPasswordSetupLink())) {
-        setRecoveryMode(true);
-        setError("");
-        setMessage("Enter a new password for your account.");
+      if (event === "PASSWORD_RECOVERY") {
+        showPasswordSetup();
       }
     });
 
     (async () => {
       const url = new URL(window.location.href);
-      const code = url.searchParams.get("code");
       const callbackError = url.searchParams.get("error_description") || url.searchParams.get("error");
-
       if (callbackError) {
         if (active) {
-          setError(decodeURIComponent(callbackError.replace(/\+/g, " ")));
+          setError(callbackError.replace(/\+/g, " "));
         }
         return;
       }
 
+      const code = url.searchParams.get("code");
+      const tokenHash = url.searchParams.get("token_hash");
+      const queryType = url.searchParams.get("type");
+
       if (code) {
         const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(code);
         if (!active) return;
-
         if (exchangeError) {
-          setError("This invitation or password-reset link is invalid or has expired. Please ask an Admin for a fresh invitation.");
-        } else {
-          setRecoveryMode(true);
-          setError("");
-          setMessage("Enter a new password for your account.");
-          window.history.replaceState({}, document.title, url.pathname);
+          setError("This invitation or password-reset link is invalid or has expired. Please request a fresh link.");
+          return;
         }
+        if (isPasswordSetupType(queryType)) showPasswordSetup();
+        window.history.replaceState({}, document.title, url.pathname);
+        return;
+      }
+
+      if (tokenHash && (queryType === "recovery" || queryType === "invite" || queryType === "signup" || queryType === "magiclink")) {
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+          token_hash: tokenHash,
+          type: queryType,
+        });
+        if (!active) return;
+        if (verifyError) {
+          setError("This invitation or password-reset link is invalid or has expired. Please request a fresh link.");
+          return;
+        }
+        if (queryType === "recovery" || queryType === "invite" || queryType === "signup") {
+          showPasswordSetup();
+        }
+        window.history.replaceState({}, document.title, url.pathname);
+        return;
+      }
+
+      // Supabase's default email templates can return access_token and type in the URL hash.
+      const hashParams = new URLSearchParams(url.hash.replace(/^#/, ""));
+      const hashType = hashParams.get("type");
+      const hasAuthHash = hashParams.has("access_token") && hashParams.has("refresh_token");
+
+      if (hasAuthHash && isPasswordSetupType(hashType)) {
+        const { error: sessionError } = await supabase.auth.setSession({
+          access_token: hashParams.get("access_token")!,
+          refresh_token: hashParams.get("refresh_token")!,
+        });
+        if (!active) return;
+        if (sessionError) {
+          setError("This invitation or password-reset link is invalid or has expired. Please request a fresh link.");
+          return;
+        }
+        if (hashType === "recovery" || hashType === "invite" || hashType === "signup") {
+          showPasswordSetup();
+        }
+        window.history.replaceState({}, document.title, url.pathname);
         return;
       }
 
       const { data, error: sessionError } = await supabase.auth.getSession();
       if (!active) return;
-
       if (sessionError) {
-        setError("Could not verify the invitation link. Please open the link again or ask an Admin for a fresh invitation.");
+        setError("Could not verify the invitation link. Please open a fresh link or ask an Admin for help.");
         return;
       }
 
-      if (data.session && isPasswordSetupLink()) {
-        setRecoveryMode(true);
-        setError("");
-        setMessage("Enter a new password for your account.");
-        // Remove sensitive callback tokens from the visible URL after Supabase
-        // has established the session.
+      if (data.session && (queryType === "recovery" || queryType === "invite" || hashType === "recovery" || hashType === "invite")) {
+        showPasswordSetup();
         window.history.replaceState({}, document.title, url.pathname);
       }
     })();
