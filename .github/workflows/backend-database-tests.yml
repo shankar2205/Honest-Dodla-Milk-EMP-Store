@@ -169,9 +169,12 @@ jobs:
         run: |
           psql -v ON_ERROR_STOP=1 <<'SQL'
           insert into auth.users(id) values
-            ('11111111-1111-4111-8111-111111111111');
+            ('11111111-1111-4111-8111-111111111111'),
+            ('55555555-5555-4555-8555-555555555555');
           insert into public.profiles(id, display_name, username, role, active)
-          values ('11111111-1111-4111-8111-111111111111', 'Test Operator', 'test-operator', 'OPERATOR', true);
+          values
+            ('11111111-1111-4111-8111-111111111111', 'Test Operator', 'test-operator', 'OPERATOR', true),
+            ('55555555-5555-4555-8555-555555555555', 'Inactive Operator', 'inactive-operator', 'OPERATOR', false);
           insert into public.employees(id, employee_code, id_type, name, active)
           values ('22222222-2222-4222-8222-222222222222', '000001', 'EMPLOYEE', 'Test Employee', true);
           insert into public.products(id, name, active)
@@ -230,7 +233,47 @@ jobs:
             end;
             if not rejected then raise exception 'zero quantity was accepted'; end if;
           end $$;
-          select 'transaction success, rollback, and quantity validation assertions passed' as result;
+          set request.jwt.claim.sub = '55555555-5555-4555-8555-555555555555';
+          set role authenticated;
+          do $
+          declare rejected boolean := false;
+          begin
+            begin
+              perform * from public.create_transaction_batch(
+                '22222222-2222-4222-8222-222222222222',
+                '[{"variant_id":"44444444-4444-4444-8444-444444444444","quantity":1}]'::jsonb
+              );
+            exception when sqlstate '42501' then
+              if sqlerrm = 'Your account is inactive or not authorized' then
+                rejected := true;
+              else
+                raise;
+              end if;
+            end;
+            if not rejected then raise exception 'inactive operator was allowed to create a transaction'; end if;
+          end $;
+          reset role;
+          set request.jwt.claim.sub = '';
+          set role authenticated;
+          do $
+          declare rejected boolean := false;
+          begin
+            begin
+              perform * from public.create_transaction_batch(
+                '22222222-2222-4222-8222-222222222222',
+                '[{"variant_id":"44444444-4444-4444-8444-444444444444","quantity":1}]'::jsonb
+              );
+            exception when sqlstate '28000' then
+              if sqlerrm = 'Authentication required' then
+                rejected := true;
+              else
+                raise;
+              end if;
+            end;
+            if not rejected then raise exception 'unauthenticated transaction was allowed'; end if;
+          end $;
+          reset role;
+          select 'transaction success, rollback, quantity, inactive-user, and unauthenticated assertions passed' as result;
           SQL
 
 
