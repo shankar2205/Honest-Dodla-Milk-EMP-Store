@@ -55,9 +55,80 @@ begin
   for v_item in select value from jsonb_array_elements(p_items)
   loop
     if jsonb_typeof(v_item) <> 'object'
-       or coalesce(v_item->>'variant_id', '') = ''
-       or coalesce(v_item->>'quantity', '') !~ '^[0-9]+$' then
-      raise exception 'Each item must include variant_id and a whole-number quantity' using errcode = '22023';
+       or coalesce(v_item->>'variant_id', '') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
+
+    if v_quantity < 1 or v_quantity > 10000 then
+      raise exception 'Quantity must be between 1 and 10000' using errcode = '22023';
+    end if;
+
+    select pv.price
+      into v_price
+    from public.product_variants pv
+    join public.products p on p.id = pv.product_id
+    where pv.id = v_variant_id
+      and pv.active = true
+      and p.active = true;
+
+    if not found then
+      raise exception 'A selected product is inactive or no longer available' using errcode = '22023';
+    end if;
+
+    insert into public.transactions (
+      employee_id, product_variant_id, quantity, unit_price, operator_id
+    ) values (
+      p_employee_id, v_variant_id, v_quantity, v_price, v_user_id
+    )
+    returning id into v_transaction_id;
+
+    transaction_id := v_transaction_id;
+    return next;
+  end loop;
+
+  return;
+end;
+$$;
+
+revoke all on function public.create_transaction_batch(uuid, jsonb) from public, anon;
+grant execute on function public.create_transaction_batch(uuid, jsonb) to authenticated;
+
+       or coalesce(v_item->>'quantity', '') !~ '^[0-9]+
+
+    if v_quantity < 1 or v_quantity > 10000 then
+      raise exception 'Quantity must be between 1 and 10000' using errcode = '22023';
+    end if;
+
+    select pv.price
+      into v_price
+    from public.product_variants pv
+    join public.products p on p.id = pv.product_id
+    where pv.id = v_variant_id
+      and pv.active = true
+      and p.active = true;
+
+    if not found then
+      raise exception 'A selected product is inactive or no longer available' using errcode = '22023';
+    end if;
+
+    insert into public.transactions (
+      employee_id, product_variant_id, quantity, unit_price, operator_id
+    ) values (
+      p_employee_id, v_variant_id, v_quantity, v_price, v_user_id
+    )
+    returning id into v_transaction_id;
+
+    transaction_id := v_transaction_id;
+    return next;
+  end loop;
+
+  return;
+end;
+$$;
+
+revoke all on function public.create_transaction_batch(uuid, jsonb) from public, anon;
+grant execute on function public.create_transaction_batch(uuid, jsonb) to authenticated;
+
+       or length(coalesce(v_item->>'quantity', '')) > 5 then
+      raise exception 'Each item must include a valid variant UUID and a whole-number quantity' using errcode = '22023';
     end if;
 
     v_variant_id := (v_item->>'variant_id')::uuid;
