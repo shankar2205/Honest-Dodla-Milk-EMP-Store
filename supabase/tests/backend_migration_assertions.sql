@@ -68,7 +68,7 @@ begin
     and cmd = 'SELECT'
     and roles = array['authenticated']::name[];
 
-  if v_policy is null or position('( SELECT auth.uid()' in upper(v_policy)) = 0
+  if v_policy is null or position('( SELECT AUTH.UID()' in upper(v_policy)) = 0
      or position('active' in v_policy) = 0 then
     raise exception 'Profile self-read policy missing expected auth.uid() initplan and active predicate; found: %', v_policy;
   end if;
@@ -82,7 +82,7 @@ begin
     and roles = array['authenticated']::name[];
 
   if v_policy is null
-     or position('( SELECT auth.uid()' in upper(v_policy)) = 0
+     or position('( SELECT AUTH.UID()' in upper(v_policy)) = 0
      or position('current_user_role' in v_policy) = 0 then
     raise exception 'Transaction insert policy missing expected auth.uid() initplan or role predicate; found: %', v_policy;
   end if;
