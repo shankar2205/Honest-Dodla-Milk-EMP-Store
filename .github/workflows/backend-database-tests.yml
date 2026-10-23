@@ -1,0 +1,181 @@
+name: Backend Database Tests
+
+on:
+  pull_request:
+    branches:
+      - fix/dashboard-employee-code-validation
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/tests/**'
+      - '.github/workflows/backend-database-tests.yml'
+  workflow_dispatch:
+
+jobs:
+  postgres-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: milk_store_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d milk_store_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: milk_store_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify legacy migration version collisions are visible
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from collections import defaultdict
+          migrations = defaultdict(list)
+          for path in Path("supabase/migrations").glob("*.sql"):
+              prefix = path.name.split("_", 1)[0]
+              if prefix.isdigit():
+                  migrations[prefix].append(path.name)
+          duplicates = {version: files for version, files in migrations.items() if len(files) > 1}
+          print("Legacy duplicate prefixes (documented blocker):")
+          for version, files in sorted(duplicates.items()):
+              print(f"  {version}: {', '.join(sorted(files))}")
+          if not duplicates:
+              print("No duplicate numeric prefixes found.")
+          PY
+
+      - name: Bootstrap disposable Supabase-compatible database
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          create role anon nologin;
+          create role authenticated nologin;
+          create role service_role nologin bypassrls;
+          create schema auth;
+          create table auth.users (id uuid primary key);
+          create schema private;
+          create function auth.uid() returns uuid
+            language sql stable
+            as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+          SQL
+
+      - name: Apply initial schema to disposable database
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/0001_initial_schema.sql
+
+      - name: Provide project helper used by current transaction policies
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          create or replace function private.current_user_role()
+          returns public.user_role
+          language sql stable security definer
+          set search_path = ''
+          as $$
+            select p.role from public.profiles p
+            where p.id = auth.uid() and p.active = true
+          $$;
+          SQL
+
+      - name: Apply backend transaction and policy migrations
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261023000000_atomic_transaction_backend.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261023010000_rls_auth_uid_initplan_tuning.sql
+
+      - name: Run catalog assertions supported by this isolated baseline
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare fn record; pol text;
+          begin
+            select p.prosecdef, p.proconfig into fn
+            from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+            where n.nspname='public' and p.proname='create_transaction_batch'
+              and pg_get_function_identity_arguments(p.oid)='p_employee_id uuid, p_items jsonb';
+            if not found then raise exception 'transaction RPC missing'; end if;
+            if fn.prosecdef then raise exception 'transaction RPC must be SECURITY INVOKER'; end if;
+            if not coalesce(fn.proconfig @> array['search_path=""'], false) then
+              raise exception 'transaction RPC must have empty search_path';
+            end if;
+            if not has_function_privilege('authenticated','public.create_transaction_batch(uuid,jsonb)','EXECUTE') then
+              raise exception 'authenticated execute missing';
+            end if;
+            if has_function_privilege('anon','public.create_transaction_batch(uuid,jsonb)','EXECUTE') then
+              raise exception 'anon must not execute transaction RPC';
+            end if;
+            select qual into pol from pg_policies
+              where schemaname='public' and tablename='profiles'
+                and policyname='users can read their own profile' and cmd='SELECT';
+            if pol is null or position('( SELECT AUTH.UID()' in upper(pol))=0
+              or position('active' in pol)=0 then
+              raise exception 'profile RLS initplan tuning assertion failed: %', pol;
+            end if;
+            select with_check into pol from pg_policies
+              where schemaname='public' and tablename='transactions'
+                and policyname='operators can create transactions' and cmd='INSERT';
+            if pol is null or position('( SELECT AUTH.UID()' in upper(pol))=0
+              or position('current_user_role' in pol)=0 then
+              raise exception 'transaction RLS initplan tuning assertion failed: %', pol;
+            end if;
+          end $$;
+          select 'isolated database catalog assertions passed' as result;
+          SQL
+
+      - name: Seed isolated test records
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          insert into auth.users(id) values
+            ('11111111-1111-4111-8111-111111111111');
+          insert into public.profiles(id, display_name, username, role, active)
+          values ('11111111-1111-4111-8111-111111111111', 'Test Operator', 'test-operator', 'OPERATOR', true);
+          insert into public.employees(id, employee_code, id_type, name, active)
+          values ('22222222-2222-4222-8222-222222222222', '000001', 'EMPLOYEE', 'Test Employee', true);
+          insert into public.products(id, name, active)
+          values ('33333333-3333-4333-8333-333333333333', 'Test Milk', true);
+          insert into public.product_variants(id, product_id, variant_name, unit_volume_ml, price, active)
+          values ('44444444-4444-4444-8444-444444444444', '33333333-3333-4333-8333-333333333333', '1 L', 1000, 75, true);
+          SQL
+
+      - name: Verify atomic success and rollback on invalid later item
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          set request.jwt.claim.sub = '11111111-1111-4111-8111-111111111111';
+          set role authenticated;
+          do $$
+          declare n integer;
+          begin
+            select count(*) into n from public.create_transaction_batch(
+              '22222222-2222-4222-8222-222222222222',
+              '[{"variant_id":"44444444-4444-4444-8444-444444444444","quantity":2}]'::jsonb
+            );
+            if n <> 1 then raise exception 'expected one inserted transaction, got %', n; end if;
+          end $$;
+          reset role;
+          do $$
+          declare before_count bigint; after_count bigint;
+          begin
+            select count(*) into before_count from public.transactions;
+            begin
+              perform * from public.create_transaction_batch(
+                '22222222-2222-4222-8222-222222222222',
+                '[{"variant_id":"44444444-4444-4444-8444-444444444444","quantity":1},{"variant_id":"99999999-9999-4999-8999-999999999999","quantity":1}]'::jsonb
+              );
+              raise exception 'expected invalid item to fail';
+            exception when others then
+              if sqlerrm = 'expected invalid item to fail' then raise; end if;
+            end;
+            select count(*) into after_count from public.transactions;
+            if after_count <> before_count then
+              raise exception 'atomicity failure: transaction rows changed from % to %', before_count, after_count;
+            end if;
+          end $$;
+          select 'transaction success and rollback assertions passed' as result;
+          SQL
