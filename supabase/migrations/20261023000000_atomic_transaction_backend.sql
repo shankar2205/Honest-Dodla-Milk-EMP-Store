@@ -55,7 +55,14 @@ begin
   for v_item in select value from jsonb_array_elements(p_items)
   loop
     if jsonb_typeof(v_item) <> 'object'
-       or coalesce(v_item->>'variant_id', '') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
+       or coalesce(v_item->>'variant_id', '') !~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+       or coalesce(v_item->>'quantity', '') !~ '^[0-9]+$'
+       or length(coalesce(v_item->>'quantity', '')) > 5 then
+      raise exception 'Each item must include a valid variant UUID and a whole-number quantity' using errcode = '22023';
+    end if;
+
+    v_variant_id := (v_item->>'variant_id')::uuid;
+    v_quantity := (v_item->>'quantity')::integer;
 
     if v_quantity < 1 or v_quantity > 10000 then
       raise exception 'Quantity must be between 1 and 10000' using errcode = '22023';
