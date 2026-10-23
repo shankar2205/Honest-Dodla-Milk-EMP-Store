@@ -117,54 +117,23 @@ export default function NewTransactionPage() {
     }
     setSaving(true);
 
-    const { data: sessionData } = await supabase.auth.getSession();
-    const operatorId = sessionData.session?.user.id;
-    if (!operatorId) {
-      setError("Your session has expired. Please sign in again.");
-      setSaving(false);
-      return;
-    }
+    const { error: transactionError } = await supabase.rpc("create_transaction_batch", {
+      p_employee_id: employeeId,
+      p_items: cart.map((item) => ({
+        variant_id: item.variantId,
+        quantity: item.quantity,
+      })),
+    });
 
-    const { data: currentEmployee } = await supabase.from("employees").select("id").eq("id", employeeId).eq("active", true).maybeSingle();
-    if (!currentEmployee) {
-      setError("The selected employee is no longer active. Refresh and try again.");
-      setSaving(false);
-      return;
-    }
-
-    const variantIds = cart.map((item) => item.variantId);
-    const { data: currentVariants, error: variantError } = await supabase
-      .from("product_variants").select("id,price").in("id", variantIds).eq("active", true);
-
-    if (variantError) {
-      setError("Could not verify current product prices. Refresh and try again.");
-      setSaving(false);
-      return;
-    }
-    if (!currentVariants || currentVariants.length !== variantIds.length) {
-      setError("One or more selected products are no longer active. Refresh and try again.");
-      setSaving(false);
-      return;
-    }
-
-    const currentPriceMap = new Map(currentVariants.map((variant) => [variant.id, Number(variant.price)]));
-    const rows = cart.map((item) => ({
-      employee_id: currentEmployee.id,
-      product_variant_id: item.variantId,
-      quantity: item.quantity,
-      unit_price: currentPriceMap.get(item.variantId),
-      operator_id: operatorId,
-    }));
-
-    if (rows.some((row) => row.unit_price === undefined)) {
-      setError("Could not verify one or more product prices. Refresh and try again.");
-      setSaving(false);
-      return;
-    }
-
-    const { error: insertError } = await supabase.from("transactions").insert(rows);
-    if (insertError) {
-      setError("Transaction could not be saved. Check your connection and try again. If it still fails, ask an administrator to review access and product status.");
+    if (transactionError) {
+      const message = transactionError.message || "";
+      if (message.includes("Authentication required") || message.includes("inactive or not authorized")) {
+        setError("Your session may have expired or your account is inactive. Please sign in again or contact an administrator.");
+      } else if (message.includes("no longer available") || message.includes("active employee")) {
+        setError("The selected employee or product is no longer active. Refresh and try again.");
+      } else {
+        setError("Transaction could not be saved. Please refresh and try again. If the issue continues, ask an administrator to review the backend.");
+      }
       setSaving(false);
       return;
     }
