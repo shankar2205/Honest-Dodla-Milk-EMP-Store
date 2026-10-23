@@ -195,7 +195,7 @@ jobs:
             stored_price numeric(10,2);
             stored_operator uuid;
           begin
-            select count(*), min(transaction_id) into n, created_id
+            select count(*), (array_agg(transaction_id))[1] into n, created_id
             from public.create_transaction_batch(
               '22222222-2222-4222-8222-222222222222',
               '[{"variant_id":"44444444-4444-4444-8444-444444444444","quantity":2,"price":0.01,"operator_id":"55555555-5555-4555-8555-555555555555"}]'::jsonb
