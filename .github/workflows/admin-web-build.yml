@@ -9,6 +9,7 @@ on:
     branches:
       - Main
       - feature/admin-reports
+      - fix/dashboard-employee-code-validation
   workflow_dispatch:
 
 jobs:
