@@ -212,8 +212,25 @@ jobs:
             if after_count <> before_count then
               raise exception 'atomicity failure: transaction rows changed from % to %', before_count, after_count;
             end if;
-          end $$;
-          select 'transaction success and rollback assertions passed' as result;
+          end $;
+          do $
+          declare rejected boolean := false;
+          begin
+            begin
+              perform * from public.create_transaction_batch(
+                '22222222-2222-4222-8222-222222222222',
+                '[{"variant_id":"44444444-4444-4444-8444-444444444444","quantity":0}]'::jsonb
+              );
+            exception when sqlstate '22023' then
+              if sqlerrm = 'Quantity must be between 1 and 10000' then
+                rejected := true;
+              else
+                raise;
+              end if;
+            end;
+            if not rejected then raise exception 'zero quantity was accepted'; end if;
+          end $;
+          select 'transaction success, rollback, and quantity validation assertions passed' as result;
           SQL
 
 
