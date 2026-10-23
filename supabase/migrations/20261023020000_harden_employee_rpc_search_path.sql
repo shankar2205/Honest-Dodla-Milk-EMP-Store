@@ -15,7 +15,7 @@ as $function$
 declare
   v_employee public.employees;
 begin
-  if private.current_user_role() not in ('ADMIN', 'OPERATOR') then
+  if coalesce(private.current_user_role()::text, '') not in ('ADMIN', 'OPERATOR') then
     raise exception 'Not authorized';
   end if;
 
@@ -66,7 +66,7 @@ declare
   v_guest_code text;
   v_employee public.employees;
 begin
-  if private.current_user_role() not in ('ADMIN', 'OPERATOR') then
+  if coalesce(private.current_user_role()::text, '') not in ('ADMIN', 'OPERATOR') then
     raise exception 'Not authorized';
   end if;
 
