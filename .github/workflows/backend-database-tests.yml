@@ -90,8 +90,28 @@ jobs:
 
       - name: Apply legacy employee-code migrations in isolation
         run: |
+          # The initial schema view depends on employee_code; this historical
+          # type-change migration predates the final view definition.
+          psql -v ON_ERROR_STOP=1 -c "drop view public.transaction_report"
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/0007_employee_code_text_and_validation.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/0007_enforce_six_digit_employee_codes.sql
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          create or replace view public.transaction_report as
+          select t.id, t.transaction_at,
+            e.name as employee_name,
+            coalesce(e.employee_code, e.guest_code) as employee_identifier,
+            e.id_type, e.department,
+            p.name as product_name, pv.variant_name, pv.unit_volume_ml,
+            t.quantity,
+            (t.quantity * pv.unit_volume_ml) as total_volume_ml,
+            round((t.quantity * pv.unit_volume_ml)::numeric / 1000, 3) as total_volume_litres,
+            t.unit_price, t.total_amount, pr.display_name as operator_name
+          from public.transactions t
+          join public.employees e on e.id = t.employee_id
+          join public.product_variants pv on pv.id = t.product_variant_id
+          join public.products p on p.id = pv.product_id
+          join public.profiles pr on pr.id = t.operator_id;
+          SQL
 
       - name: Provide project helper used by current transaction policies
         run: |
