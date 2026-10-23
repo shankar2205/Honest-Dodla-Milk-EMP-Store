@@ -1,0 +1,92 @@
+-- Read-only assertions for the backend hardening migrations.
+-- Run against a disposable local/test Supabase database AFTER migrations are applied:
+--   psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/backend_migration_assertions.sql
+-- This file deliberately does not insert/update/delete application data.
+
+do $$
+declare
+  v_fn record;
+  v_policy text;
+begin
+  select p.prosecdef, p.proconfig
+    into v_fn
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'public'
+    and p.proname = 'create_transaction_batch'
+    and pg_get_function_identity_arguments(p.oid) = 'p_employee_id uuid, p_items jsonb';
+
+  if not found then
+    raise exception 'Missing create_transaction_batch(uuid,jsonb)';
+  end if;
+  if v_fn.prosecdef then
+    raise exception 'create_transaction_batch must be SECURITY INVOKER';
+  end if;
+  if not coalesce(v_fn.proconfig @> array['search_path=""'], false) then
+    raise exception 'create_transaction_batch must set an empty search_path';
+  end if;
+
+  if not has_function_privilege('authenticated', 'public.create_transaction_batch(uuid,jsonb)', 'EXECUTE') then
+    raise exception 'authenticated must be able to execute create_transaction_batch';
+  end if;
+  if has_function_privilege('anon', 'public.create_transaction_batch(uuid,jsonb)', 'EXECUTE') then
+    raise exception 'anon must not be able to execute create_transaction_batch';
+  end if;
+
+  foreach v_policy in array array['create_employee', 'create_guest_employee']
+  loop
+    select p.prosecdef, p.proconfig
+      into v_fn
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = v_policy
+    order by p.oid
+    limit 1;
+
+    if not found then
+      raise exception 'Missing expected RPC: %', v_policy;
+    end if;
+    if not v_fn.prosecdef then
+      raise exception '% must remain SECURITY DEFINER', v_policy;
+    end if;
+    if not coalesce(v_fn.proconfig @> array['search_path=""'], false) then
+      raise exception '% must set an empty search_path', v_policy;
+    end if;
+    if not has_function_privilege('authenticated', format('public.%s', v_policy), 'EXECUTE') then
+      raise exception 'authenticated must retain EXECUTE on %', v_policy;
+    end if;
+    if has_function_privilege('anon', format('public.%s', v_policy), 'EXECUTE') then
+      raise exception 'anon must not have EXECUTE on %', v_policy;
+    end if;
+  end loop;
+
+  select qual into v_policy
+  from pg_policies
+  where schemaname = 'public'
+    and tablename = 'profiles'
+    and policyname = 'users can read their own profile'
+    and cmd = 'SELECT'
+    and roles = array['authenticated']::name[];
+
+  if v_policy is null or position('( SELECT auth.uid()' in upper(v_policy)) = 0
+     or position('active' in v_policy) = 0 then
+    raise exception 'Profile self-read policy missing expected auth.uid() initplan and active predicate; found: %', v_policy;
+  end if;
+
+  select with_check into v_policy
+  from pg_policies
+  where schemaname = 'public'
+    and tablename = 'transactions'
+    and policyname = 'operators can create transactions'
+    and cmd = 'INSERT'
+    and roles = array['authenticated']::name[];
+
+  if v_policy is null
+     or position('( SELECT auth.uid()' in upper(v_policy)) = 0
+     or position('current_user_role' in v_policy) = 0 then
+    raise exception 'Transaction insert policy missing expected auth.uid() initplan or role predicate; found: %', v_policy;
+  end if;
+end;
+$$;
+
+select 'Backend migration catalog assertions passed' as result;
