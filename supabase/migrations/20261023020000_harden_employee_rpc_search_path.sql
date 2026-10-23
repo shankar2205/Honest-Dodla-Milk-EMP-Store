@@ -1,5 +1,5 @@
 -- Harden SECURITY DEFINER employee-creation RPCs against search_path object shadowing.
--- Keep the existing authorization and validation behavior; fully qualify referenced objects.
+-- Preserve the six-digit employee-code validation introduced by the legacy migration.
 
 create or replace function public.create_employee(
   p_employee_code text,
@@ -19,8 +19,8 @@ begin
     raise exception 'Not authorized';
   end if;
 
-  if nullif(trim(p_employee_code), '') is null then
-    raise exception 'Employee ID is required';
+  if trim(coalesce(p_employee_code, '')) !~ '^[0-9]{6}$' then
+    raise exception 'Employee code must contain exactly 6 numeric digits';
   end if;
 
   if nullif(trim(p_name), '') is null then
