@@ -180,14 +180,19 @@ export default function LoginPage() {
     setError("");
     setMessage("");
     setLoading(true);
-    const redirectTo = new URL("/login", window.location.origin).toString();
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
-    setLoading(false);
-    if (resetError) {
-      setError("Could not send a reset email. Please try again later or contact an administrator.");
-      return;
+    try {
+      const redirectTo = new URL("/login", window.location.origin).toString();
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo });
+      if (resetError) {
+        setError("Could not send a reset email. Please try again later or contact an administrator.");
+        return;
+      }
+      setMessage("If an account exists for that email, a password-reset link has been sent. Open the newest email on this same site.");
+    } catch {
+      setError("Could not send a reset email. Check your connection and try again later.");
+    } finally {
+      setLoading(false);
     }
-    setMessage("If an account exists for that email, a password-reset link has been sent. Open the newest email on this same site.");
   }
 
   async function handlePasswordUpdate(event: FormEvent<HTMLFormElement>) {
@@ -205,20 +210,29 @@ export default function LoginPage() {
     }
 
     setLoading(true);
-    const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
-    if (updateError) {
-      setError("Could not update the password. The reset link may have expired; request a new one and use the newest email.");
-      setLoading(false);
-      return;
-    }
+    try {
+      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
+      if (updateError) {
+        setError("Could not update the password. The reset link may have expired; request a new one and use the newest email.");
+        return;
+      }
 
-    await supabase.auth.signOut();
-    setPassword("");
-    setNewPassword("");
-    setConfirmPassword("");
-    setView("login");
-    setMessage("Password updated successfully. Sign in with your new password.");
-    setLoading(false);
+      // Do not report success until the recovery session has been cleared.
+      const { error: signOutError } = await supabase.auth.signOut();
+      if (signOutError) {
+        setError("Password was updated, but sign-out could not be completed. Close this tab and sign in again.");
+        return;
+      }
+      setPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setView("login");
+      setMessage("Password updated successfully. Sign in with your new password.");
+    } catch {
+      setError("Could not complete the password update. Check your connection; if the password changed, sign in with the new password.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
