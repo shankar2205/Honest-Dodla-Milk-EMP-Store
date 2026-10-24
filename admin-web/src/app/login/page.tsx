@@ -48,7 +48,13 @@ export default function LoginPage() {
         return;
       }
 
-      if (tokenHash && type) {
+      if (tokenHash || type) {
+        if (!tokenHash || !type) {
+          if (active) setError("This link is invalid or expired. Request a new password-reset link and open the newest email.");
+          // A partial callback is malformed; do not leave callback parameters in the address bar.
+          window.history.replaceState({}, document.title, url.pathname);
+          return;
+        }
         const allowedType = ["recovery", "invite", "signup", "magiclink", "email"].includes(type);
         if (!allowedType) {
           if (active) setError("This link is invalid or expired. Request a new password-reset link and open the newest email.");
