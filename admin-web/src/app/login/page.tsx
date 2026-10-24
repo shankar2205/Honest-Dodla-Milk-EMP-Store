@@ -102,7 +102,12 @@ export default function LoginPage() {
       }
     }
 
-    void processAuthCallback();
+    void processAuthCallback().catch(() => {
+      if (active) {
+        setError("Could not process this authentication link. Request a new password-reset link and open the newest email.");
+        window.history.replaceState({}, document.title, url.pathname);
+      }
+    });
     const { data: listener } = supabase.auth.onAuthStateChange((event) => {
       if (active && event === "PASSWORD_RECOVERY") {
         setView("recovery");
