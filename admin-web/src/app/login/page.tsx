@@ -48,7 +48,12 @@ export default function LoginPage() {
 
       if (tokenHash && type) {
         const allowedType = ["recovery", "invite", "signup", "magiclink", "email"].includes(type);
-        if (!allowedType) return;
+        if (!allowedType) {
+          if (active) setError("This link is invalid or expired. Request a new password-reset link and open the newest email.");
+          // Remove unsupported callback parameters so token material is not left in the address bar.
+          window.history.replaceState({}, document.title, url.pathname);
+          return;
+        }
         const { error: verifyError } = await supabase.auth.verifyOtp({
           token_hash: tokenHash,
           type: type as "recovery" | "invite" | "signup" | "magiclink" | "email",
