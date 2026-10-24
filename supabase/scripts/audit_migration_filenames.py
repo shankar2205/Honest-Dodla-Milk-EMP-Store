@@ -5,6 +5,7 @@ Legacy numeric prefixes are reported, not treated as a replayable chronology.
 New timestamped migrations must use unique 14-digit versions.
 """
 from collections import defaultdict
+from datetime import datetime
 from pathlib import Path
 import re
 import sys
@@ -21,6 +22,10 @@ errors = []
 for path in files:
     prefix = path.name.split("_", 1)[0]
     if prefix.isdigit() and len(prefix) == 14:
+        try:
+            datetime.strptime(prefix, "%Y%m%d%H%M%S")
+        except ValueError:
+            errors.append(f"Invalid timestamped migration version: {path.name}")
         versions[prefix].append(path.name)
     elif prefix.isdigit():
         legacy[prefix].append(path.name)
