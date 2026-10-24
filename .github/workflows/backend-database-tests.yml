@@ -39,6 +39,9 @@ jobs:
       - name: Audit migration filenames
         run: python3 supabase/scripts/audit_migration_filenames.py
 
+      - name: Test migration filename audit rules
+        run: python3 -m unittest discover -s supabase/tests -p 'test_*.py' -v
+
       - name: Verify legacy migration version collisions are visible
         shell: bash
         run: |
