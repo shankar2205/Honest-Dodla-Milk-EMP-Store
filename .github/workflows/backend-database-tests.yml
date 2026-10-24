@@ -36,6 +36,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Audit migration filenames
+        run: python3 supabase/scripts/audit_migration_filenames.py
+
       - name: Verify legacy migration version collisions are visible
         shell: bash
         run: |
