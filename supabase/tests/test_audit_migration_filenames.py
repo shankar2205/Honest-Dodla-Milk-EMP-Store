@@ -1,5 +1,4 @@
 """Regression tests for the migration filename audit script."""
-import os
 from pathlib import Path
 import subprocess
 import sys
@@ -41,9 +40,15 @@ class MigrationFilenameAuditTests(unittest.TestCase):
         self.assertIn("Legacy numeric prefix collisions", result.stdout)
 
     def test_invalid_calendar_timestamp_fails(self):
-        result = self.run_audit(["20261340000000_invalid_date.sql"])
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("Invalid timestamped migration version", result.stdout)
+        for name in ("20261340000000_invalid_month_day.sql", "20261023256000_invalid_time.sql"):
+            with self.subTest(name=name):
+                result = self.run_audit([name])
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("Invalid timestamped migration version", result.stdout)
+
+    def test_valid_leap_day_timestamp_passes(self):
+        result = self.run_audit(["20240229010203_leap_day.sql"])
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
     def test_duplicate_timestamp_versions_fail(self):
         result = self.run_audit([
