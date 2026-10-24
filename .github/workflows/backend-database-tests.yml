@@ -305,7 +305,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 <<'SQL'
           set request.jwt.claim.sub = '11111111-1111-4111-8111-111111111111';
           set role authenticated;
-          do $
+          do $$
           declare rejected boolean; v_variant uuid;
           begin
             rejected := false;
@@ -334,7 +334,7 @@ jobs:
               end;
               if not rejected then raise exception 'inactive variant or parent product was accepted: %', v_variant; end if;
             end loop;
-          end $;
+          end $$;
           reset role;
           select 'inactive employee, inactive variant, and inactive product assertions passed' as result;
           SQL
