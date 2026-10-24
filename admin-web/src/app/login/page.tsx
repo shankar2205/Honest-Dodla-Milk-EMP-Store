@@ -36,6 +36,8 @@ export default function LoginPage() {
         const { error: callbackError } = await supabase.auth.exchangeCodeForSession(code);
         if (callbackError) {
           if (active) setError("This link is invalid or expired. Request a new password-reset link and open the newest email.");
+          // Clear callback query/hash values even when validation fails.
+          window.history.replaceState({}, document.title, url.pathname);
           return;
         }
         if (active && isRecovery) {
@@ -60,6 +62,8 @@ export default function LoginPage() {
         });
         if (verifyError) {
           if (active) setError("This link is invalid or expired. Request a new password-reset link and open the newest email.");
+          // Clear callback query/hash values even when validation fails.
+          window.history.replaceState({}, document.title, url.pathname);
           return;
         }
         if (active && type === "recovery") {
@@ -77,6 +81,8 @@ export default function LoginPage() {
         });
         if (sessionError) {
           if (active) setError("This link is invalid or expired. Request a new password-reset link and open the newest email.");
+          // Clear callback query/hash values even when validation fails.
+          window.history.replaceState({}, document.title, url.pathname);
           return;
         }
         if (active && isRecovery) {
