@@ -125,15 +125,16 @@ export default function LoginPage() {
       .eq("id", data.user.id)
       .maybeSingle();
 
-    if (profileError || !profile || !profile.active) {
+    const role = String(profile?.role ?? "").toUpperCase();
+    if (profileError || !profile || !profile.active || !["ADMIN", "OPERATOR"].includes(role)) {
       await supabase.auth.signOut();
-      setError("Your account is not active or has no matching application profile. Contact an administrator.");
+      setError("Your account is not active or does not have an authorized application role. Contact an administrator.");
       setLoading(false);
       return;
     }
 
     setLoading(false);
-    router.replace(String(profile.role).toUpperCase() === "ADMIN" ? "/dashboard" : "/transactions");
+    router.replace(role === "ADMIN" ? "/dashboard" : "/transactions");
   }
 
   async function handleResetRequest(event: FormEvent<HTMLFormElement>) {
