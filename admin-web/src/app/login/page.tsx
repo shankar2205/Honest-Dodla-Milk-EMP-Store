@@ -140,29 +140,39 @@ export default function LoginPage() {
     setMessage("");
     setLoading(true);
 
-    const { data, error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    if (signInError || !data.user) {
-      setError("Sign-in failed. Check the email and password, or use Forgot password to create a fresh password.");
+    try {
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      if (signInError || !data.user) {
+        setError("Sign-in failed. Check the email and password, or use Forgot password to create a fresh password.");
+        return;
+      }
+
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("role, active")
+        .eq("id", data.user.id)
+        .maybeSingle();
+
+      const role = String(profile?.role ?? "").toUpperCase();
+      if (profileError || !profile || !profile.active || !["ADMIN", "OPERATOR"].includes(role)) {
+        await supabase.auth.signOut();
+        setError("Your account is not active or does not have an authorized application role. Contact an administrator.");
+        return;
+      }
+
+      router.replace(role === "ADMIN" ? "/dashboard" : "/transactions");
+    } catch {
+      // A profile lookup or auth request can reject unexpectedly (for example, network loss).
+      // Best-effort sign-out avoids leaving a partially validated login session active.
+      try {
+        await supabase.auth.signOut();
+      } catch {
+        // Keep the user-facing failure safe even if cleanup also fails.
+      }
+      setError("Could not complete sign-in. Check your connection and try again.");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("role, active")
-      .eq("id", data.user.id)
-      .maybeSingle();
-
-    const role = String(profile?.role ?? "").toUpperCase();
-    if (profileError || !profile || !profile.active || !["ADMIN", "OPERATOR"].includes(role)) {
-      await supabase.auth.signOut();
-      setError("Your account is not active or does not have an authorized application role. Contact an administrator.");
-      setLoading(false);
-      return;
-    }
-
-    setLoading(false);
-    router.replace(role === "ADMIN" ? "/dashboard" : "/transactions");
   }
 
   async function handleResetRequest(event: FormEvent<HTMLFormElement>) {
