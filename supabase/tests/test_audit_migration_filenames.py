@@ -40,6 +40,11 @@ class MigrationFilenameAuditTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("Legacy numeric prefix collisions", result.stdout)
 
+    def test_invalid_calendar_timestamp_fails(self):
+        result = self.run_audit(["20261340000000_invalid_date.sql"])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("Invalid timestamped migration version", result.stdout)
+
     def test_duplicate_timestamp_versions_fail(self):
         result = self.run_audit([
             "20261023000000_first.sql",
