@@ -80,7 +80,13 @@ export default function LoginPage() {
         return;
       }
 
-      if (accessToken && refreshToken) {
+      if (accessToken || refreshToken) {
+        if (!accessToken || !refreshToken) {
+          if (active) setError("This link is invalid or expired. Request a new password-reset link and open the newest email.");
+          // Do not leave a partial session token in the address bar.
+          window.history.replaceState({}, document.title, url.pathname);
+          return;
+        }
         const { error: sessionError } = await supabase.auth.setSession({
           access_token: accessToken,
           refresh_token: refreshToken,
