@@ -60,6 +60,16 @@ begin
     end if;
   end loop;
 
+  if has_function_privilege('anon', 'public.next_guest_code()', 'EXECUTE') then
+    raise exception 'anon must not be able to execute next_guest_code';
+  end if;
+  if not has_function_privilege('authenticated', 'public.next_guest_code()', 'EXECUTE') then
+    raise exception 'authenticated must retain execute on next_guest_code';
+  end if;
+  if has_sequence_privilege('anon', 'public.guest_code_seq', 'USAGE') then
+    raise exception 'anon must not have USAGE on guest_code_seq';
+  end if;
+
   select qual into v_policy
   from pg_policies
   where schemaname = 'public'
