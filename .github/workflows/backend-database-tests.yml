@@ -119,6 +119,19 @@ jobs:
           join public.profiles pr on pr.id = t.operator_id;
           SQL
 
+      - name: Bootstrap guest-code generator dependencies for permission tests
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          create sequence public.guest_code_seq;
+          create or replace function public.next_guest_code()
+          returns text
+          language sql
+          set search_path = ''
+          as $
+            select 'GUEST-' || lpad(pg_catalog.nextval('public.guest_code_seq'::pg_catalog.regclass)::text, 4, '0')
+          $;
+          SQL
+
       - name: Provide project helper used by current transaction policies
         run: |
           psql -v ON_ERROR_STOP=1 <<'SQL'
