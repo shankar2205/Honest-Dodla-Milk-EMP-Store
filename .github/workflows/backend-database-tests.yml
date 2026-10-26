@@ -171,6 +171,19 @@ jobs:
           select 'isolated database catalog assertions passed' as result;
           SQL
 
+      - name: Exercise read-only catalog fingerprint on disposable database
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          create schema supabase_migrations;
+          create table supabase_migrations.schema_migrations (
+            version text primary key,
+            name text not null
+          );
+          insert into supabase_migrations.schema_migrations(version, name)
+          values ('20261023000000', 'atomic_transaction_backend');
+          SQL
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/production_catalog_fingerprint.sql
+
       - name: Seed isolated test records
         run: |
           psql -v ON_ERROR_STOP=1 <<'SQL'
