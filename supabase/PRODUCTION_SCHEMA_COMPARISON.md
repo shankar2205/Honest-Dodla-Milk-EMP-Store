@@ -1,6 +1,7 @@
 # Production schema comparison (read-only)
 
-Date checked: 2026-10-23
+Date initially checked: 2026-10-23
+Read-only recheck: 2026-10-26
 Project: `bbnvqktefmdpgzlqlzml` (ap-south-1)
 
 This is a read-only comparison of the live catalog against the legacy migration SQL currently in the repository. No production schema, data, grants, or migration records were changed.
@@ -33,3 +34,40 @@ This is a read-only comparison of the live catalog against the legacy migration 
 4. Produce a new clean local baseline only after the comparison is complete. Keep the production migration ledger and live schema unchanged until separately reviewed.
 
 **Conclusion:** the comparison supports a staged local baseline effort, not a blind rename of the duplicate prefixes. No migration files were renamed or deleted by this step.
+
+
+## Read-only recheck (2026-10-26)
+
+The connected project catalog and migration ledger were queried again without executing any DDL or data-changing statements.
+
+### Migration ledger observed
+
+The live migration ledger still contains these seven versions:
+
+| Version | Name |
+|---|---|
+| `20261007100518` | `add_guest_employee_creator` |
+| `20261007100537` | `fix_guest_employee_creator_role` |
+| `20261007100634` | `restrict_guest_employee_creator_rpc` |
+| `20261007102015` | `add_counter_employee_registration` |
+| `20261009101008` | `harden_guest_code_generation` |
+| `20261012111425` | `operator_daily_litres_kpi` |
+| `20261012112124` | `fix_operator_daily_litres_kpi_role_check` |
+
+No `20261023*` branch migration appears in this ledger. The branch's transaction RPC, RLS tuning, and employee RPC search-path hardening migrations remain unapplied to production.
+
+### Core table fingerprint observed
+
+The live `public` schema listing confirms the five core tables and RLS enabled on each:
+
+- `profiles`: id, display_name, username, role, active, created_at, updated_at.
+- `employees`: id, employee_code, guest_code, id_type, name, department, phone, active, created_at, updated_at.
+- `products`: id, name, active, created_at, updated_at.
+- `product_variants`: id, product_id, variant_name, unit_volume_ml, price, active, created_at, updated_at.
+- `transactions`: id, employee_id, product_variant_id, quantity, unit_price, generated total_amount, operator_id, transaction_at, created_at.
+
+The catalog listing also confirmed foreign keys linking profiles to auth users and transactions to employees, product variants, and operator profiles. It reports existing data (including 141 transaction rows), further reinforcing that initial-schema replay is not an appropriate production migration strategy.
+
+### Scope and remaining gap
+
+This recheck strengthens the migration-ledger and core-table fingerprint only. It does **not** compare the complete production function bodies, all RLS policies, grants, triggers, views, indexes, or historical migration source. It therefore does not establish that the proposed branch migrations can safely be applied. The next safe engineering step is to add automated catalog assertions and migration tests in the disposable CI database for the exact behavior being changed, while keeping production read-only.
