@@ -144,6 +144,10 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261023000000_atomic_transaction_backend.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261023010000_rls_auth_uid_initplan_tuning.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261023020000_harden_employee_rpc_search_path.sql
+          # The isolated migration sequence omits legacy 0005/0006 while resolving
+          # duplicate numeric prefixes, so apply their final RPC grants explicitly.
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/0005_restrict_guest_employee_creator.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/0006_restrict_counter_employee_registration.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261026000000_restrict_guest_code_generator.sql
 
       - name: Run shared backend migration assertions
