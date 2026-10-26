@@ -131,6 +131,10 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261023000000_atomic_transaction_backend.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261023010000_rls_auth_uid_initplan_tuning.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261023020000_harden_employee_rpc_search_path.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261026000000_restrict_guest_code_generator.sql
+
+      - name: Run shared backend migration assertions
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/backend_migration_assertions.sql
 
       - name: Run catalog assertions supported by this isolated baseline
         run: |
