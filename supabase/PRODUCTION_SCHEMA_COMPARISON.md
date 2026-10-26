@@ -71,3 +71,31 @@ The catalog listing also confirmed foreign keys linking profiles to auth users a
 ### Scope and remaining gap
 
 This recheck strengthens the migration-ledger and core-table fingerprint only. It does **not** compare the complete production function bodies, all RLS policies, grants, triggers, views, indexes, or historical migration source. It therefore does not establish that the proposed branch migrations can safely be applied. The next safe engineering step is to add automated catalog assertions and migration tests in the disposable CI database for the exact behavior being changed, while keeping production read-only.
+
+
+## Read-only security catalog detail (2026-10-26)
+
+A targeted catalog query captured the current production policy predicates and selected RPC security metadata. This is a snapshot, not a security certification.
+
+### Observed RLS policies
+
+- `profiles`: the self-read policy is `id = auth.uid() AND active = true`; an admin management policy also exists.
+- `employees`, `products`, and `product_variants`: active-row read policies coexist with admin management policies.
+- `transactions`: reads require the current role to be ADMIN or OPERATOR; inserts require `operator_id = auth.uid()` and one of those roles.
+- These observed production predicates refer to `auth.uid()` directly in the catalog output, whereas the branch's proposed RLS tuning wraps the UID lookup in a scalar subquery for initplan behavior. Do not assume that tuning migration has been applied.
+
+### Selected function security and grants
+
+| Function | SECURITY DEFINER | search_path | anon EXECUTE | authenticated EXECUTE |
+|---|---:|---|---:|---:|
+| `private.current_user_role()` | yes | empty | no | yes |
+| `public.create_employee(...)` | yes | `public` | no | yes |
+| `public.create_guest_employee(...)` | yes | `public` | no | yes |
+| `public.next_guest_code()` | no | empty | yes | yes |
+| `public.operator_daily_sales(...)` | yes | empty | no | yes |
+
+The production `create_employee` and `create_guest_employee` search paths are a concrete difference addressed by the branch's employee-RPC hardening migration. `next_guest_code()` is executable by anon according to the current privilege check; its body and intended exposure should be reviewed before any change is proposed. This note does not change its grants or behavior.
+
+### Explicitly not concluded
+
+This targeted read did not retrieve every function body, every object grant, trigger definition, index usage statistic, or all migration source SQL. The correct next step is a reviewed diff between the captured production catalog and a clean disposable baseline, followed by focused tests. It is not approval to apply migrations to production.
