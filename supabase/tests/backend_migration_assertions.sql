@@ -63,8 +63,11 @@ begin
   if has_function_privilege('anon', 'public.next_guest_code()', 'EXECUTE') then
     raise exception 'anon must not be able to execute next_guest_code';
   end if;
-  if not has_function_privilege('authenticated', 'public.next_guest_code()', 'EXECUTE') then
-    raise exception 'authenticated must retain execute on next_guest_code';
+  if has_function_privilege('authenticated', 'public.next_guest_code()', 'EXECUTE') then
+    raise exception 'authenticated must not directly execute next_guest_code';
+  end if;
+  if has_sequence_privilege('authenticated', 'public.guest_code_seq', 'USAGE') then
+    raise exception 'authenticated must not directly use guest_code_seq';
   end if;
   if has_sequence_privilege('anon', 'public.guest_code_seq', 'USAGE') then
     raise exception 'anon must not have USAGE on guest_code_seq';
