@@ -35,7 +35,7 @@ begin
 
   foreach v_policy in array array['create_employee', 'create_guest_employee']
   loop
-    select p.prosecdef, p.proconfig
+    select p.oid, p.prosecdef, p.proconfig
       into v_fn
     from pg_proc p
     join pg_namespace n on n.oid = p.pronamespace
@@ -52,10 +52,10 @@ begin
     if not coalesce(v_fn.proconfig @> array['search_path=""'], false) then
       raise exception '% must set an empty search_path', v_policy;
     end if;
-    if not has_function_privilege('authenticated', format('public.%s', v_policy), 'EXECUTE') then
+    if not has_function_privilege('authenticated', v_fn.oid, 'EXECUTE') then
       raise exception 'authenticated must retain EXECUTE on %', v_policy;
     end if;
-    if has_function_privilege('anon', format('public.%s', v_policy), 'EXECUTE') then
+    if has_function_privilege('anon', v_fn.oid, 'EXECUTE') then
       raise exception 'anon must not have EXECUTE on %', v_policy;
     end if;
   end loop;
