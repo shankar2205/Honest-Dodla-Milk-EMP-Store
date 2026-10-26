@@ -127,9 +127,9 @@ jobs:
           returns text
           language sql
           set search_path = ''
-          as $
+          as $$
             select 'GUEST-' || lpad(pg_catalog.nextval('public.guest_code_seq'::pg_catalog.regclass)::text, 4, '0')
-          $;
+          $$;
           SQL
 
       - name: Provide project helper used by current transaction policies
