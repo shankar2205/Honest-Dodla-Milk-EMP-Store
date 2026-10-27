@@ -127,3 +127,28 @@ Before any production rollout:
 5. Review the final migration plan and rollback/verification steps separately. Production remains read-only until explicit deployment approval.
 
 **Current disposition:** reconciliation has found actionable issues and the branch contains a targeted trigger fix, but this is not yet a production deployment approval or a claim of complete schema equivalence.
+
+## Historical migration-source recovery (2026-10-27)
+
+The Git history was traced by migration-path history and the commits that introduced the relevant backend functions. This separates SQL that is directly recoverable from a historical patch from SQL that is merely inferred from the live catalog.
+
+### Source verified in historical commits
+
+- **Guest creation RPC:** the original implementation and authenticated-only grant are visible in [`bfcefa3`](https://github.com/shankar2205/Honest-Dodla-Milk-EMP-Store/commit/bfcefa30e6439875453a593be1357a3c5d59523b). It calls the role helper, validates the guest name, allocates a guest code, and inserts a GUEST employee. The later [`481e2a2`](https://github.com/shankar2205/Honest-Dodla-Milk-EMP-Store/commit/481e2a22761805a27fc8848de7cc42b27b64a48f) explicitly revokes anon/public execution and grants authenticated execution. The historical implementation uses `search_path = public`; it is not equivalent to the hardened branch proposal.
+- **Employee creation RPC grants:** [`832020f`](https://github.com/shankar2205/Honest-Dodla-Milk-EMP-Store/commit/832020f6ed6841f5ef7a4098448039d752d60091) records the explicit authenticated-only grant for `create_employee(text,text,text,text)`.
+- **Guest-code collision/concurrency hardening:** [`a0dfc78`](https://github.com/shankar2205/Honest-Dodla-Milk-EMP-Store/commit/a0dfc78031e04ebff382c733edffcb7e924f7c2b) contains the complete sequence-reconciliation and advisory-lock implementation for `next_guest_code()`. It is strong evidence for the historical function body, but does not by itself prove that the production migration ledger's timestamped migration used byte-identical SQL.
+- **Guest duplicate-phone lookup:** [`d37772b`](https://github.com/shankar2205/Honest-Dodla-Milk-EMP-Store/commit/d37772b98fe411bbe1af7af286852e76b8fa3093) contains the initial function body and grants. Follow-up commits [`5fe4582`](https://github.com/shankar2205/Honest-Dodla-Milk-EMP-Store/commit/5fe4582e54af2d4a8e50a7b1922a6b51c4b9d1dd), [`85b4a4a`](https://github.com/shankar2205/Honest-Dodla-Milk-EMP-Store/commit/85b4a4a56864cd5cc38048acf7704f44f0b698f7), and [`09e80b4`](https://github.com/shankar2205/Honest-Dodla-Milk-EMP-Store/commit/09e80b40000946e471937f3e0a69b7b761f3ae70) adjust its response behavior and role-helper reference.
+- **Daily sales/litres KPI:** [`7497cec`](https://github.com/shankar2205/Honest-Dodla-Milk-EMP-Store/commit/7497cecbff1dddf89beffd4bf23285403acba8c9) contains the full `operator_daily_sales(timestamptz,timestamptz)` implementation; [`900785c`](https://github.com/shankar2205/Honest-Dodla-Milk-EMP-Store/commit/900785c5bb0b5c86aaa820963aee4879b2303bee) later tightens its grants to exclude anon.
+
+### What is still not proven
+
+The seven live ledger entries are timestamped versions, while the repository's legacy SQL uses duplicate numeric prefixes. Historical patches recover important function bodies and grant changes, but they do not yet prove an exact one-to-one mapping from each of the seven live version identifiers to the SQL applied in production. In particular, the precise intermediate role-helper correction and the exact applied contents of every timestamped migration remain unverified. Do not create timestamped migration files by guessing from the current catalog or by copying a nearby legacy file and assuming equivalence.
+
+### Next verification gate
+
+1. Compare each recovered historical function/grant patch with the current live `pg_get_functiondef`, `proconfig`, and effective ACL output.
+2. Reconstruct a candidate ordered baseline in a **disposable** database and run the existing backend migration workflow from empty state.
+3. Compare the disposable catalog fingerprint with production for tables/columns, generated expressions, constraints, policies, triggers, indexes, views, functions, and grants.
+4. Only label a migration as source-verified when its contents are tied to the actual applied SQL or a trusted export. Keep inferred steps explicitly marked as inferred.
+
+No production schema, data, grants, or migration-ledger records were changed during this recovery.
