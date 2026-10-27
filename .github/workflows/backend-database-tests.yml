@@ -555,3 +555,9 @@ jobs:
           reset role;
           select 'inactive employee-RPC authorization assertion passed' as result;
           SQL
+
+      - name: Validate machine-readable catalog snapshot and drift reporter
+        run: |
+          psql -X -A -t -v ON_ERROR_STOP=1 -f supabase/tests/catalog_fingerprint_json.sql > /tmp/catalog-fingerprint.json
+          python3 -m json.tool /tmp/catalog-fingerprint.json > /dev/null
+          python3 supabase/scripts/compare_catalog_fingerprints.py /tmp/catalog-fingerprint.json /tmp/catalog-fingerprint.json --fail-on-diff
