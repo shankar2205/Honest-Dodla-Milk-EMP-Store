@@ -26,8 +26,21 @@ class Difference:
 def _json_path(parent: str, key: str | int) -> str:
     if isinstance(key, int):
         return f"{parent}[{key}]"
-    escaped = key.replace("~", "~0").replace("/", "~1")
+    escaped = str(key).replace("~", "~0").replace("/", "~1")
     return f"{parent}/{escaped}"
+
+
+def _canonical(value: Any) -> str:
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def _keyed_objects(items: list[Any]) -> dict[str, dict[str, Any]] | None:
+    """Index catalog rows by their stable object_key, if every row supports it."""
+    if not all(isinstance(item, dict) and isinstance(item.get("object_key"), str)
+               for item in items):
+        return None
+    result = {item["object_key"]: item for item in items}
+    return result if len(result) == len(items) else None
 
 
 def compare_json(baseline: Any, candidate: Any, path: str = "") -> list[Difference]:
@@ -42,12 +55,24 @@ def compare_json(baseline: Any, candidate: Any, path: str = "") -> list[Differen
             differences.extend(compare_json(baseline[key], candidate[key], _json_path(path, key)))
         return differences
 
-    # Arrays in SQL snapshots are sorted by their stable object identity. Comparing
-    # them positionally makes additions produce noisy cascades, so compare arrays
-    # as canonical JSON values when they are not identical.
     if isinstance(baseline, list) and isinstance(candidate, list):
         if baseline == candidate:
             return []
+        baseline_keyed = _keyed_objects(baseline)
+        candidate_keyed = _keyed_objects(candidate)
+        if baseline_keyed is not None and candidate_keyed is not None:
+            for key in sorted(baseline_keyed.keys() - candidate_keyed.keys()):
+                differences.append(Difference(_json_path(path, key), "removed", baseline_keyed[key], None))
+            for key in sorted(candidate_keyed.keys() - baseline_keyed.keys()):
+                differences.append(Difference(_json_path(path, key), "added", None, candidate_keyed[key]))
+            for key in sorted(baseline_keyed.keys() & candidate_keyed.keys()):
+                differences.extend(compare_json(
+                    baseline_keyed[key], candidate_keyed[key], _json_path(path, key)
+                ))
+            return differences
+
+        # Arrays without a stable identity are compared as canonical values. This
+        # avoids positional cascades, while keeping the report deterministic.
         baseline_map = {_canonical(item): item for item in baseline}
         candidate_map = {_canonical(item): item for item in candidate}
         if len(baseline_map) == len(baseline) and len(candidate_map) == len(candidate):
@@ -61,10 +86,6 @@ def compare_json(baseline: Any, candidate: Any, path: str = "") -> list[Differen
     if type(baseline) is not type(candidate) or baseline != candidate:
         differences.append(Difference(path or "/", "changed", baseline, candidate))
     return differences
-
-
-def _canonical(value: Any) -> str:
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
 
 
 def load_snapshot(path: Path) -> Any:
