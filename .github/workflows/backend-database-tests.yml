@@ -814,8 +814,14 @@ jobs:
             echo "::error::Set SUPABASE_PRODUCTION_READONLY_DATABASE_URL to a read-only production database connection string before enabling this comparison."
             exit 1
           fi
-          psql -X -A -t "${PRODUCTION_DATABASE_URL}" -v ON_ERROR_STOP=1 \
-            -f supabase/tests/catalog_fingerprint_json.sql \
+          # The supplied login must be a member of catalog_audit_ro. Explicitly
+          # drop into that restricted role before reading production metadata.
+          {
+            printf '%s\\n' 'SET ROLE catalog_audit_ro;'
+            cat supabase/tests/catalog_fingerprint_json.sql
+          } > /tmp/production-catalog-fingerprint.sql
+          psql -X -q -A -t "${PRODUCTION_DATABASE_URL}" -v ON_ERROR_STOP=1 \
+            -f /tmp/production-catalog-fingerprint.sql \
             > artifacts/production-catalog-fingerprint.json
           python3 -m json.tool artifacts/production-catalog-fingerprint.json > /dev/null
           python3 supabase/scripts/compare_catalog_fingerprints.py \
