@@ -45,8 +45,8 @@ begin
   if not found then
     raise exception 'Missing save_product_variant(uuid,text,text,integer,numeric)';
   end if;
-  if v_fn.prosecdef then
-    raise exception 'save_product_variant must be SECURITY INVOKER so table RLS remains in force';
+  if not v_fn.prosecdef then
+    raise exception 'save_product_variant must be SECURITY DEFINER to perform privileged catalog writes after its explicit ADMIN role check';
   end if;
   if not coalesce(v_fn.proconfig @> array['search_path=""'], false) then
     raise exception 'save_product_variant must set an empty search_path';
