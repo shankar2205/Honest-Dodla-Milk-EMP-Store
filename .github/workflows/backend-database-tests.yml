@@ -727,7 +727,9 @@ jobs:
           SQL
 
       - name: Validate catalog fingerprint under restricted metadata role
+        shell: bash
         run: |
+          set -euo pipefail
           psql -v ON_ERROR_STOP=1 <<'SQL'
           create role catalog_audit_ro nologin
             nosuperuser nocreatedb nocreaterole noinherit noreplication nobypassrls;
@@ -735,14 +737,17 @@ jobs:
           alter role catalog_audit_ro set default_transaction_read_only = on;
           alter role catalog_audit_ro set statement_timeout = '30s';
           SQL
-          { printf '%s\n' 'SET ROLE catalog_audit_ro;'; cat supabase/tests/catalog_fingerprint_json.sql; } \
-            | psql -X -A -t -v ON_ERROR_STOP=1 \
+          # Keep the role switch and fingerprint query in one explicit psql session.
+          psql -X -A -t -v ON_ERROR_STOP=1 \
+            -c 'SET ROLE catalog_audit_ro' \
+            -f supabase/tests/catalog_fingerprint_json.sql \
             > /tmp/restricted-catalog-fingerprint.json
+          test -s /tmp/restricted-catalog-fingerprint.json
           python3 -m json.tool /tmp/restricted-catalog-fingerprint.json > /dev/null
           echo "Restricted-role catalog fingerprint returned valid JSON."
           # Ensure the audit role has no application-table SELECT grants.
           psql -v ON_ERROR_STOP=1 <<'SQL'
-          do $
+          do $$
           begin
             if exists (
               select 1
@@ -752,7 +757,7 @@ jobs:
             ) then
               raise exception 'catalog audit role unexpectedly has SELECT grants on application tables';
             end if;
-          end $;
+          end $$;
           SQL
 
       - name: Capture disposable catalog fingerprint and validate drift reporter
