@@ -735,9 +735,8 @@ jobs:
           alter role catalog_audit_ro set default_transaction_read_only = on;
           alter role catalog_audit_ro set statement_timeout = '30s';
           SQL
-          psql -X -A -t -v ON_ERROR_STOP=1 \
-            -c 'set role catalog_audit_ro' \
-            -f supabase/tests/catalog_fingerprint_json.sql \
+          { printf '%s\n' 'SET ROLE catalog_audit_ro;'; cat supabase/tests/catalog_fingerprint_json.sql; } \
+            | psql -X -A -t -v ON_ERROR_STOP=1 \
             > /tmp/restricted-catalog-fingerprint.json
           python3 -m json.tool /tmp/restricted-catalog-fingerprint.json > /dev/null
           echo "Restricted-role catalog fingerprint returned valid JSON."
