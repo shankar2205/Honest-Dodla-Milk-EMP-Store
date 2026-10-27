@@ -149,6 +149,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/0005_restrict_guest_employee_creator.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/0006_restrict_counter_employee_registration.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261026000000_restrict_guest_code_generator.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261027000000_restore_admin_guest_employee_rpcs.sql
 
       - name: Run shared backend migration assertions
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/backend_migration_assertions.sql
