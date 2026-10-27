@@ -556,8 +556,17 @@ jobs:
           select 'inactive employee-RPC authorization assertion passed' as result;
           SQL
 
-      - name: Validate machine-readable catalog snapshot and drift reporter
+      - name: Capture disposable catalog fingerprint and validate drift reporter
         run: |
-          psql -X -A -t -v ON_ERROR_STOP=1 -f supabase/tests/catalog_fingerprint_json.sql > /tmp/catalog-fingerprint.json
-          python3 -m json.tool /tmp/catalog-fingerprint.json > /dev/null
-          python3 supabase/scripts/compare_catalog_fingerprints.py /tmp/catalog-fingerprint.json /tmp/catalog-fingerprint.json --fail-on-diff
+          mkdir -p artifacts
+          psql -X -A -t -v ON_ERROR_STOP=1 -f supabase/tests/catalog_fingerprint_json.sql > artifacts/disposable-catalog-fingerprint.json
+          python3 -m json.tool artifacts/disposable-catalog-fingerprint.json > /dev/null
+          python3 supabase/scripts/compare_catalog_fingerprints.py artifacts/disposable-catalog-fingerprint.json artifacts/disposable-catalog-fingerprint.json --fail-on-diff
+
+      - name: Upload disposable catalog fingerprint
+        uses: actions/upload-artifact@v4
+        with:
+          name: disposable-catalog-fingerprint-${{ github.sha }}
+          path: artifacts/disposable-catalog-fingerprint.json
+          if-no-files-found: error
+          retention-days: 14
