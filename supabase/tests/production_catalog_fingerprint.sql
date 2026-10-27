@@ -9,6 +9,21 @@ select version, name
 from supabase_migrations.schema_migrations
 order by version;
 
+\echo '=== Installed extensions ==='
+select e.extname, e.extversion, n.nspname as schema_name
+from pg_extension e
+join pg_namespace n on n.oid = e.extnamespace
+order by e.extname;
+
+\echo '=== Public enum types and labels ==='
+select n.nspname as schema_name, t.typname as type_name,
+       e.enumsortorder, e.enumlabel
+from pg_type t
+join pg_namespace n on n.oid = t.typnamespace
+join pg_enum e on e.enumtypid = t.oid
+where n.nspname in ('public', 'private')
+order by n.nspname, t.typname, e.enumsortorder;
+
 \echo '=== Public tables, columns, and row estimates ==='
 select
   c.relname as table_name,
@@ -96,3 +111,24 @@ select schemaname, tablename, indexname, indexdef
 from pg_indexes
 where schemaname = 'public'
 order by tablename, indexname;
+
+\echo '=== Sequences and role privileges ==='
+select
+  schemaname, sequencename, data_type, start_value, min_value,
+  max_value, increment_by, cycle, cache_size, last_value,
+  has_sequence_privilege('anon', format('%I.%I', schemaname, sequencename), 'USAGE') as anon_usage,
+  has_sequence_privilege('anon', format('%I.%I', schemaname, sequencename), 'SELECT') as anon_select,
+  has_sequence_privilege('authenticated', format('%I.%I', schemaname, sequencename), 'USAGE') as authenticated_usage,
+  has_sequence_privilege('authenticated', format('%I.%I', schemaname, sequencename), 'SELECT') as authenticated_select
+from pg_sequences
+where schemaname in ('public', 'private')
+order by schemaname, sequencename;
+
+\echo '=== Public table and view grants ==='
+select
+  table_schema, table_name, grantee, privilege_type, is_grantable
+from information_schema.role_table_grants
+where table_schema = 'public'
+  and grantee in ('anon', 'authenticated', 'service_role', 'postgres')
+order by table_schema, table_name, grantee, privilege_type;
+
