@@ -36,3 +36,22 @@ The live Supabase migration ledger contains seven timestamped versions, while th
 ## Current conclusion
 
 The history recovers substantial implementation evidence for guest creation, guest-code generation, and the daily litres KPI, plus important permission changes. It does **not** yet establish a complete, exact source-to-ledger mapping for all seven production versions. The next engineering task is to obtain trusted applied SQL and produce a machine-checkable catalog comparison; inventing timestamped migration files or treating filename similarity as proof would be unsafe.
+
+
+## Read-only live function comparison (2026-10-27)
+
+A catalog-only `SELECT` captured `pg_get_functiondef`, `proconfig`, `SECURITY DEFINER`, and effective EXECUTE checks for the current live functions. No production DDL, grants, data, or migration-ledger records were changed.
+
+| Live object | Observed production behavior | Source-map implication |
+|---|---|---|
+| `public.create_guest_employee(text,text,text)` | SECURITY DEFINER; `search_path=public`; checks `private.current_user_role()`; validates name; calls `public.next_guest_code()`; inserts a GUEST employee. | The function body is semantically consistent with historical `0004` / commit `bfcefa3`, but this is not byte-level proof of the timestamped applied migration. The branch's empty-search-path hardening remains a separate proposed change. |
+| `public.create_employee(text,text,text,text)` | SECURITY DEFINER; `search_path=public`; checks `private.current_user_role()`; validates code/name; rejects case-insensitive duplicate employee codes; inserts EMPLOYEE row. | The live body is now documented in this observation, but the exact original creation migration has not yet been recovered. The `0006` file only changes grants and cannot stand in for the creation SQL. |
+| `public.next_guest_code()` | SECURITY DEFINER=false; empty search path; advisory transaction lock; sequence reconciliation against existing `GUEST-####` values; fallback collision check. Effective EXECUTE is true for both `anon` and `authenticated`. | The body closely matches the historical implementation in `0003` / commit `a0dfc78`. The live anon grant remains a distinct exposure; branch migration `20261026000000_restrict_guest_code_generator.sql` proposes to revoke it. |
+| `public.operator_daily_sales(timestamptz,timestamptz)` | SECURITY DEFINER; empty search path; role check directly queries active `public.profiles` for `auth.uid()` and ADMIN/OPERATOR role; validates the time window; groups sales by product and variant. Effective EXECUTE is false for anon and true for authenticated. | The live role check materially differs from the legacy `0009` candidate's `public.current_user_role()` call. This is consistent with a later role-check correction, but the exact SQL for ledger version `20261012112124` remains unverified. |
+| `public.find_guest_by_phone(text)` | Not returned by the live function catalog query. | The legacy `0008` candidate must not be assumed to exist in production. This confirms the need to compare object presence as well as source history. |
+
+The live `private.current_user_role()` definition is SECURITY DEFINER with an empty search path and returns the active profile role for `auth.uid()`. Its EXECUTE check is false for anon and true for authenticated.
+
+### Immediate next step
+
+The evidence now distinguishes the actual production KPI role-check implementation from the earlier legacy candidate, and confirms the duplicate-phone lookup function is absent from the live catalog. Before constructing the replay harness, recover trusted applied SQL for the two KPI ledger entries and the employee-registration creation migration, and decide explicitly whether `find_guest_by_phone` is intended to be a branch-only restoration or should exist in the production baseline. No deployment is implied.
