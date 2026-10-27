@@ -420,6 +420,65 @@ jobs:
           select 'employee-code validation assertions passed' as result;
           SQL
 
+      - name: Verify guest creation and duplicate-phone lookup use secure RPCs
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          set request.jwt.claim.sub = '11111111-1111-4111-8111-111111111111';
+          set role authenticated;
+          do $
+          declare
+            v_generated public.employees;
+            v_custom public.employees;
+            v_match public.employees;
+          begin
+            v_generated := public.create_guest_employee_with_code(
+              'Generated Guest Test', '5550101234', 'QA', null
+            );
+            if v_generated.guest_code is null or v_generated.guest_code = '' then
+              raise exception 'guest RPC did not generate a guest ID';
+            end if;
+
+            select * into v_match
+            from public.find_guest_by_phone('+1 (555) 010-1234')
+            limit 1;
+            if v_match.id is distinct from v_generated.id then
+              raise exception 'normalized duplicate-phone lookup did not return the created guest';
+            end if;
+
+            v_custom := public.create_guest_employee_with_code(
+              'Custom Guest Test', '5550105678', 'QA', 'GUEST-CI-0001'
+            );
+            if v_custom.guest_code <> 'GUEST-CI-0001' then
+              raise exception 'custom guest ID was not preserved';
+            end if;
+
+            begin
+              perform public.create_guest_employee_with_code(
+                'Duplicate Guest Test', null, null, 'GUEST-CI-0001'
+              );
+              raise exception 'duplicate guest ID was accepted';
+            exception when others then
+              if sqlerrm = 'duplicate guest ID was accepted' then raise; end if;
+              if sqlerrm <> 'Guest ID already exists' then raise; end if;
+            end;
+          end $;
+          reset role;
+          select 'secure guest creation, generated/custom IDs, and normalized duplicate lookup assertions passed' as result;
+          SQL
+
+      - name: Ensure Admin employee page uses backend RPCs, not direct table inserts
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path("admin-web/src/app/employees/new/page.tsx").read_text()
+          assert 'supabase.rpc("create_employee"' in source
+          assert 'supabase.rpc("create_guest_employee_with_code"' in source
+          assert 'supabase.rpc("find_guest_by_phone"' in source
+          assert 'supabase.rpc("next_guest_code"' not in source
+          assert '.from("employees").insert' not in source
+          print("Admin employee creation is routed through secured backend RPCs.")
+          PY
+
       - name: Verify employee RPCs reject inactive users without a role
         run: |
           psql -v ON_ERROR_STOP=1 <<'SQL'
