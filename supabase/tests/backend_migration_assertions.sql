@@ -58,6 +58,34 @@ begin
     raise exception 'anon must not be able to execute save_product_variant';
   end if;
 
+  select p.prosecdef, p.proconfig
+    into v_fn
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'public'
+    and p.proname = 'update_profile_access'
+    and pg_get_function_identity_arguments(p.oid) =
+      'p_user_id uuid, p_role user_role, p_active boolean';
+
+  if not found then
+    raise exception 'Missing update_profile_access(uuid,user_role,boolean)';
+  end if;
+  if not v_fn.prosecdef then
+    raise exception 'update_profile_access must be SECURITY DEFINER';
+  end if;
+  if not coalesce(v_fn.proconfig @> array['search_path=""'], false) then
+    raise exception 'update_profile_access must set an empty search_path';
+  end if;
+  if not has_function_privilege('authenticated', 'public.update_profile_access(uuid,public.user_role,boolean)', 'EXECUTE') then
+    raise exception 'authenticated must be able to execute update_profile_access';
+  end if;
+  if has_function_privilege('anon', 'public.update_profile_access(uuid,public.user_role,boolean)', 'EXECUTE') then
+    raise exception 'anon must not be able to execute update_profile_access';
+  end if;
+  if has_table_privilege('authenticated', 'public.profiles', 'UPDATE') then
+    raise exception 'authenticated must not directly update profiles';
+  end if;
+
   foreach v_policy in array array['find_guest_by_phone', 'create_guest_employee_with_code']
   loop
     select p.oid, p.prosecdef, p.proconfig
