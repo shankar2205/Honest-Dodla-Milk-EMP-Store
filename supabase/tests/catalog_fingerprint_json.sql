@@ -88,6 +88,7 @@ select jsonb_pretty(jsonb_build_object(
       join pg_namespace n on n.oid = p.pronamespace
       join pg_language l on l.oid = p.prolang
       where n.nspname in ('public', 'private')
+        and p.prokind in ('f', 'p', 'w')
     ) x
   ), '[]'::jsonb),
 
