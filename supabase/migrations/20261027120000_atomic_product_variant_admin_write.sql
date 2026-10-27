@@ -40,9 +40,14 @@ begin
     raise exception 'Unit volume must be a positive whole number of millilitres' using errcode = '22023';
   end if;
 
-  if p_price is null or p_price < 0 or p_price::text = 'NaN' then
+  if p_price is null or p_price < 0 or p_price::text in ('NaN', 'Infinity', '-Infinity') then
     raise exception 'Price must be a non-negative number' using errcode = '22023';
   end if;
+
+  -- Serialize same-name resolution to avoid concurrent duplicate product creation.
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(lower(trim(p_product_name)), 0)
+  );
 
   select count(*)
     into v_matching_products
