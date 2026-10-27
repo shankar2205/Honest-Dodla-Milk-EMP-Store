@@ -737,20 +737,40 @@ jobs:
           alter role catalog_audit_ro set default_transaction_read_only = on;
           alter role catalog_audit_ro set statement_timeout = '30s';
           SQL
-          # Put SET ROLE and the fingerprint query in a single SQL file, then
-          # execute that file once. This avoids psql option-order ambiguity.
+          # Run SET ROLE and the fingerprint query in the same psql invocation.
+          # Capture stdout/stderr separately so a blank or malformed result is diagnosable.
           {
             printf '%s\n' 'SET ROLE catalog_audit_ro;'
             cat supabase/tests/catalog_fingerprint_json.sql
           } > /tmp/restricted-catalog-fingerprint.sql
-          psql -X -A -t -v ON_ERROR_STOP=1 \
+          if ! psql -X -A -t -v ON_ERROR_STOP=1 -a -b \
             -f /tmp/restricted-catalog-fingerprint.sql \
-            > /tmp/restricted-catalog-fingerprint.json
-          if [[ ! -s /tmp/restricted-catalog-fingerprint.json ]]; then
-            echo "Restricted-role fingerprint returned no JSON output." >&2
+            > /tmp/restricted-catalog-fingerprint.json \
+            2> /tmp/restricted-catalog-fingerprint.stderr; then
+            echo "Restricted-role fingerprint SQL execution failed." >&2
+            cat /tmp/restricted-catalog-fingerprint.stderr >&2
             exit 1
           fi
-          python3 -m json.tool /tmp/restricted-catalog-fingerprint.json > /dev/null
+          output_bytes="$(wc -c < /tmp/restricted-catalog-fingerprint.json | tr -d ' ')"
+          non_whitespace_bytes="$(tr -d '[:space:]' < /tmp/restricted-catalog-fingerprint.json | wc -c | tr -d ' ')"
+          echo "Restricted-role fingerprint stdout bytes: $output_bytes; non-whitespace bytes: $non_whitespace_bytes"
+          if [[ "$non_whitespace_bytes" -eq 0 ]]; then
+            echo "Restricted-role fingerprint produced only whitespace. Captured psql stderr:" >&2
+            cat /tmp/restricted-catalog-fingerprint.stderr >&2
+            echo "Captured psql stdout (visible characters):" >&2
+            cat -A /tmp/restricted-catalog-fingerprint.json >&2
+            echo "Executed SQL file tail:" >&2
+            tail -n 8 /tmp/restricted-catalog-fingerprint.sql >&2
+            exit 1
+          fi
+          if ! python3 -m json.tool /tmp/restricted-catalog-fingerprint.json > /dev/null; then
+            echo "Restricted-role fingerprint output is not valid JSON. First 400 bytes:" >&2
+            head -c 400 /tmp/restricted-catalog-fingerprint.json >&2
+            echo >&2
+            echo "Captured psql stderr:" >&2
+            cat /tmp/restricted-catalog-fingerprint.stderr >&2
+            exit 1
+          fi
           echo "Restricted-role catalog fingerprint returned valid JSON."
           # Ensure the audit role has no application-table SELECT grants.
           psql -v ON_ERROR_STOP=1 <<'SQL'
