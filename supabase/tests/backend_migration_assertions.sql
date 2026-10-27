@@ -33,6 +33,34 @@ begin
     raise exception 'anon must not be able to execute create_transaction_batch';
   end if;
 
+
+  foreach v_policy in array array['find_guest_by_phone', 'create_guest_employee_with_code']
+  loop
+    select p.oid, p.prosecdef, p.proconfig
+      into v_fn
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.proname = v_policy
+    order by p.oid
+    limit 1;
+
+    if not found then
+      raise exception 'Missing expected guest RPC: %', v_policy;
+    end if;
+    if not v_fn.prosecdef then
+      raise exception '% must remain SECURITY DEFINER', v_policy;
+    end if;
+    if not coalesce(v_fn.proconfig @> array['search_path=""'], false) then
+      raise exception '% must set an empty search_path', v_policy;
+    end if;
+    if not has_function_privilege('authenticated', v_fn.oid, 'EXECUTE') then
+      raise exception 'authenticated must retain EXECUTE on %', v_policy;
+    end if;
+    if has_function_privilege('anon', v_fn.oid, 'EXECUTE') then
+      raise exception 'anon must not have EXECUTE on %', v_policy;
+    end if;
+  end loop;
+
   foreach v_policy in array array['create_employee', 'create_guest_employee']
   loop
     select p.oid, p.prosecdef, p.proconfig
