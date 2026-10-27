@@ -6,14 +6,14 @@
 DO $role$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = 'catalog_audit_ro') THEN
-    CREATE ROLE catalog_audit_ro
+    EXECUTE 'CREATE ROLE catalog_audit_ro
       NOLOGIN
       NOSUPERUSER
       NOCREATEDB
       NOCREATEROLE
       NOINHERIT
       NOREPLICATION
-      NOBYPASSRLS;
+      NOBYPASSRLS';
   END IF;
 END
 $role$;
