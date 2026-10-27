@@ -737,12 +737,19 @@ jobs:
           alter role catalog_audit_ro set default_transaction_read_only = on;
           alter role catalog_audit_ro set statement_timeout = '30s';
           SQL
-          # Keep the role switch and fingerprint query in one explicit psql session.
+          # Put SET ROLE and the fingerprint query in a single SQL file, then
+          # execute that file once. This avoids psql option-order ambiguity.
+          {
+            printf '%s\n' 'SET ROLE catalog_audit_ro;'
+            cat supabase/tests/catalog_fingerprint_json.sql
+          } > /tmp/restricted-catalog-fingerprint.sql
           psql -X -A -t -v ON_ERROR_STOP=1 \
-            -c 'SET ROLE catalog_audit_ro' \
-            -f supabase/tests/catalog_fingerprint_json.sql \
+            -f /tmp/restricted-catalog-fingerprint.sql \
             > /tmp/restricted-catalog-fingerprint.json
-          test -s /tmp/restricted-catalog-fingerprint.json
+          if [[ ! -s /tmp/restricted-catalog-fingerprint.json ]]; then
+            echo "Restricted-role fingerprint returned no JSON output." >&2
+            exit 1
+          fi
           python3 -m json.tool /tmp/restricted-catalog-fingerprint.json > /dev/null
           echo "Restricted-role catalog fingerprint returned valid JSON."
           # Ensure the audit role has no application-table SELECT grants.
