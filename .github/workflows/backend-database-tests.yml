@@ -439,7 +439,7 @@ jobs:
             end if;
 
             select * into v_match
-            from public.find_guest_by_phone('+1 (555) 010-1234')
+            from public.find_guest_by_phone('(555) 010-1234')
             limit 1;
             if v_match.id is distinct from v_generated.id then
               raise exception 'normalized duplicate-phone lookup did not return the created guest';
