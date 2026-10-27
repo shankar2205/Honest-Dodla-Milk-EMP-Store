@@ -53,8 +53,8 @@ class CatalogFingerprintComparisonTests(unittest.TestCase):
         )
         self.assertEqual([(item.kind, item.path) for item in diffs], [
             ("removed", "/policies/public.t.old"),
-            ("changed", "/policies/public.t.changed/qual"),
             ("added", "/policies/public.t.new"),
+            ("changed", "/policies/public.t.changed/qual"),
         ])
 
     def test_array_addition_and_removal_are_reported_without_stable_keys(self):
