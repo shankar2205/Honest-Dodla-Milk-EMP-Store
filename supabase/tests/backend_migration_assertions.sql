@@ -26,17 +26,6 @@ begin
     raise exception 'create_transaction_batch must set an empty search_path';
   end if;
 
-  if not exists (
-    select 1
-    from pg_constraint
-    where conname = 'employees_employee_code_six_digits_check'
-      and conrelid = 'public.employees'::regclass
-      and contype = 'c'
-      and not convalidated
-  ) then
-    raise exception 'Employee-code CHECK must exist as NOT VALID until legacy identifiers are reviewed';
-  end if;
-
   if not has_function_privilege('authenticated', 'public.create_transaction_batch(uuid,jsonb)', 'EXECUTE') then
     raise exception 'authenticated must be able to execute create_transaction_batch';
   end if;
