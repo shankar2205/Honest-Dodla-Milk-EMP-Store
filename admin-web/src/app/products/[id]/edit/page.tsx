@@ -1,5 +1,112 @@
-"use client";import{useEffect,useState}from"react";import{useRouter,useParams}from"next/navigation";import Link from"next/link";import{supabase}from"../../../../lib/supabase";import AdminShell from"../../../../components/AdminShell";
-export default function EditProduct(){const r=useRouter(),p=useParams<{id:string}>();const[name,setName]=useState(""),[variant,setVariant]=useState(""),[volume,setVolume]=useState(""),[price,setPrice]=useState(""),[error,setError]=useState(""),[saving,setSaving]=useState(false);
-useEffect(()=>{supabase.from("product_variants").select("variant_name,unit_volume_ml,price,products(name)").eq("id",p.id).single().then(({data,error:e})=>{if(e)setError(e.message);else{const q=data as any;setVariant(q.variant_name);setVolume(String(q.unit_volume_ml));setPrice(String(q.price));setName(Array.isArray(q.products)?q.products[0]?.name||"":q.products?.name||"")}})},[p.id]);
-async function save(e:React.FormEvent){e.preventDefault();setSaving(true);let productId="";const{data:pr,error:pe}=await supabase.from("products").select("id").eq("name",name.trim()).maybeSingle();if(pe){setError(pe.message);setSaving(false);return}if(pr)productId=pr.id;else{const{data:n,error:x}=await supabase.from("products").insert({name:name.trim()}).select("id").single();if(x||!n){setError(x?.message||"Could not create product");setSaving(false);return}productId=n.id}const{error:x}=await supabase.from("product_variants").update({product_id:productId,variant_name:variant.trim(),unit_volume_ml:Number(volume),price:Number(price)}).eq("id",p.id);if(x)setError(x.message);else r.replace("/products");setSaving(false)}
-return <AdminShell><div className="admin-shell"><aside className="sidebar"><div className="sidebar-brand">Honest Milk · Admin</div></aside><main className="main"><header className="topbar"><div><h1>Edit Product Variant</h1><p>Update size, volume and price.</p></div></header><section className="panel form-panel"><form onSubmit={save}><div className="field"><label>Product name</label><input value={name}onChange={e=>setName(e.target.value)}required/></div><div className="field"><label>Variant</label><input value={variant}onChange={e=>setVariant(e.target.value)}required/></div><div className="field"><label>Unit volume (ML)</label><input type="number"min="1"value={volume}onChange={e=>setVolume(e.target.value)}required/></div><div className="field"><label>Price (₹)</label><input type="number"min="0"step="0.01"value={price}onChange={e=>setPrice(e.target.value)}required/></div>{error&&<p className="error-text">{error}</p>}<div className="form-actions"><Link className="secondary-button"href="/products">Cancel</Link><button className="primary-button"disabled={saving}>{saving?"Saving...":"Save changes"}</button></div></form></section></main></div></AdminShell>}
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import AdminShell from "../../../../components/AdminShell";
+import { supabase } from "../../../../lib/supabase";
+
+type VariantRecord = {
+  variant_name: string;
+  unit_volume_ml: number;
+  price: number;
+  products: { name: string } | { name: string }[] | null;
+};
+
+export default function EditProduct() {
+  const router = useRouter();
+  const params = useParams<{ id: string }>();
+  const [name, setName] = useState("");
+  const [variant, setVariant] = useState("");
+  const [volume, setVolume] = useState("");
+  const [price, setPrice] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    supabase
+      .from("product_variants")
+      .select("variant_name,unit_volume_ml,price,products(name)")
+      .eq("id", params.id)
+      .single()
+      .then(({ data, error: loadError }) => {
+        if (loadError || !data) {
+          setError("Could not load this product variant. Refresh and try again.");
+          return;
+        }
+        const record = data as unknown as VariantRecord;
+        const product = Array.isArray(record.products) ? record.products[0] : record.products;
+        setVariant(record.variant_name);
+        setVolume(String(record.unit_volume_ml));
+        setPrice(String(record.price));
+        setName(product?.name ?? "");
+      });
+  }, [params.id]);
+
+  async function save(event: React.FormEvent) {
+    event.preventDefault();
+    setError("");
+
+    const unitVolumeMl = Number(volume);
+    const unitPrice = Number(price);
+    if (!Number.isInteger(unitVolumeMl) || unitVolumeMl < 1 || !Number.isFinite(unitPrice) || unitPrice < 0) {
+      setError("Enter a positive whole-number volume and a non-negative price.");
+      return;
+    }
+
+    setSaving(true);
+    const { error: saveError } = await supabase.rpc("save_product_variant", {
+      p_variant_id: params.id,
+      p_product_name: name.trim(),
+      p_variant_name: variant.trim(),
+      p_unit_volume_ml: unitVolumeMl,
+      p_price: unitPrice,
+    });
+
+    if (saveError) {
+      setError("Could not save the product variant. Check the details and administrator access, then try again.");
+      setSaving(false);
+      return;
+    }
+
+    router.replace("/products");
+  }
+
+  return (
+    <AdminShell>
+      <div className="main">
+        <header className="topbar">
+          <div>
+            <h1>Edit Product Variant</h1>
+            <p>Update product, size, volume and price.</p>
+          </div>
+        </header>
+        <section className="panel form-panel">
+          <form onSubmit={save}>
+            <div className="field">
+              <label htmlFor="product-name">Product name</label>
+              <input id="product-name" value={name} onChange={(event) => setName(event.target.value)} required />
+            </div>
+            <div className="field">
+              <label htmlFor="variant-name">Variant</label>
+              <input id="variant-name" value={variant} onChange={(event) => setVariant(event.target.value)} required />
+            </div>
+            <div className="field">
+              <label htmlFor="unit-volume">Unit volume (ML)</label>
+              <input id="unit-volume" type="number" min="1" step="1" value={volume} onChange={(event) => setVolume(event.target.value)} required />
+            </div>
+            <div className="field">
+              <label htmlFor="unit-price">Price (₹)</label>
+              <input id="unit-price" type="number" min="0" step="0.01" value={price} onChange={(event) => setPrice(event.target.value)} required />
+            </div>
+            {error && <p className="error-text">{error}</p>}
+            <div className="form-actions">
+              <Link className="secondary-button" href="/products">Cancel</Link>
+              <button className="primary-button" disabled={saving}>{saving ? "Saving..." : "Save changes"}</button>
+            </div>
+          </form>
+        </section>
+      </div>
+    </AdminShell>
+  );
+}

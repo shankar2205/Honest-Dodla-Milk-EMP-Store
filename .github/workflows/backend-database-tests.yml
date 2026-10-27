@@ -1,0 +1,841 @@
+name: Backend Database Tests
+
+on:
+  pull_request:
+    branches:
+      - fix/dashboard-employee-code-validation
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/tests/**'
+      - 'supabase/scripts/**'
+      - '.github/workflows/backend-database-tests.yml'
+  workflow_dispatch:
+    inputs:
+      compare_production_catalog:
+        description: "Run read-only production-vs-disposable catalog comparison (requires SUPABASE_PRODUCTION_READONLY_DATABASE_URL secret)"
+        required: false
+        type: boolean
+        default: false
+
+jobs:
+  postgres-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: milk_store_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d milk_store_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: milk_store_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Audit migration filenames
+        run: python3 supabase/scripts/audit_migration_filenames.py
+
+      - name: Test migration filename audit rules
+        run: python3 -m unittest discover -s supabase/tests -p 'test_*.py' -v
+
+      - name: Verify legacy migration version collisions are visible
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from collections import defaultdict
+          migrations = defaultdict(list)
+          for path in Path("supabase/migrations").glob("*.sql"):
+              prefix = path.name.split("_", 1)[0]
+              if prefix.isdigit():
+                  migrations[prefix].append(path.name)
+          duplicates = {version: files for version, files in migrations.items() if len(files) > 1}
+          print("Legacy duplicate prefixes (documented blocker):")
+          for version, files in sorted(duplicates.items()):
+              print(f"  {version}: {', '.join(sorted(files))}")
+          if not duplicates:
+              print("No duplicate numeric prefixes found.")
+          PY
+
+      - name: Bootstrap disposable Supabase-compatible database
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          create role anon nologin;
+          create role authenticated nologin;
+          create role service_role nologin bypassrls;
+          create schema auth;
+          create table auth.users (id uuid primary key);
+          create schema private;
+          create function auth.uid() returns uuid
+            language sql stable
+            as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+          grant usage on schema auth, private, public to authenticated, anon;
+          grant execute on function auth.uid() to authenticated, anon;
+          SQL
+
+      - name: Apply initial schema to disposable database
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/0001_initial_schema.sql
+
+      - name: Provide project helper used by legacy employee RPC
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          create or replace function private.current_user_role()
+          returns public.user_role
+          language sql stable security definer
+          set search_path = ''
+          as $$
+            select p.role from public.profiles p
+            where p.id = auth.uid() and p.active = true
+          $$;
+          grant execute on function private.current_user_role() to authenticated;
+          SQL
+
+      - name: Apply legacy employee-code migrations in isolation
+        run: |
+          # The initial schema view depends on employee_code; this historical
+          # type-change migration predates the final view definition.
+          psql -v ON_ERROR_STOP=1 -c "drop view public.transaction_report"
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/0007_employee_code_text_and_validation.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/0007_enforce_six_digit_employee_codes.sql
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          create or replace view public.transaction_report as
+          select t.id, t.transaction_at,
+            e.name as employee_name,
+            coalesce(e.employee_code, e.guest_code) as employee_identifier,
+            e.id_type, e.department,
+            p.name as product_name, pv.variant_name, pv.unit_volume_ml,
+            t.quantity,
+            (t.quantity * pv.unit_volume_ml) as total_volume_ml,
+            round((t.quantity * pv.unit_volume_ml)::numeric / 1000, 3) as total_volume_litres,
+            t.unit_price, t.total_amount, pr.display_name as operator_name
+          from public.transactions t
+          join public.employees e on e.id = t.employee_id
+          join public.product_variants pv on pv.id = t.product_variant_id
+          join public.products p on p.id = pv.product_id
+          join public.profiles pr on pr.id = t.operator_id;
+          SQL
+
+      - name: Bootstrap guest-code sequence and apply the real hardened generator
+        run: |
+          psql -v ON_ERROR_STOP=1 -c "create sequence public.guest_code_seq"
+          # Exercise the actual collision-safe, advisory-lock generator from repository history,
+          # rather than a test-only nextval() stub that could hide sequence-reconciliation bugs.
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/0003_harden_guest_code_generation.sql
+
+      - name: Provide project helper used by current transaction policies
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          grant select on public.profiles, public.employees, public.products, public.product_variants to authenticated;
+          grant insert, select on public.transactions to authenticated;
+          SQL
+
+      - name: Apply backend transaction and policy migrations
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261023000000_atomic_transaction_backend.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261023010000_rls_auth_uid_initplan_tuning.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261023020000_harden_employee_rpc_search_path.sql
+          # The isolated migration sequence omits legacy 0005/0006 while resolving
+          # duplicate numeric prefixes, so apply their final RPC grants explicitly.
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/0005_restrict_guest_employee_creator.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/0006_restrict_counter_employee_registration.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261026000000_restrict_guest_code_generator.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261027000000_restore_admin_guest_employee_rpcs.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261027100000_fix_generated_transaction_total_trigger.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261027120000_atomic_product_variant_admin_write.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261027130000_guard_profile_access_changes.sql
+
+      - name: Run shared backend migration assertions
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/backend_migration_assertions.sql
+
+      - name: Run catalog assertions supported by this isolated baseline
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          declare fn record; pol text;
+          begin
+            select p.prosecdef, p.proconfig into fn
+            from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+            where n.nspname='public' and p.proname='create_transaction_batch'
+              and pg_get_function_identity_arguments(p.oid)='p_employee_id uuid, p_items jsonb';
+            if not found then raise exception 'transaction RPC missing'; end if;
+            if fn.prosecdef then raise exception 'transaction RPC must be SECURITY INVOKER'; end if;
+            if not coalesce(fn.proconfig @> array['search_path=""'], false) then
+              raise exception 'transaction RPC must have empty search_path';
+            end if;
+            if not has_function_privilege('authenticated','public.create_transaction_batch(uuid,jsonb)','EXECUTE') then
+              raise exception 'authenticated execute missing';
+            end if;
+            if has_function_privilege('anon','public.create_transaction_batch(uuid,jsonb)','EXECUTE') then
+              raise exception 'anon must not execute transaction RPC';
+            end if;
+            select qual into pol from pg_policies
+              where schemaname='public' and tablename='profiles'
+                and policyname='users can read their own profile' and cmd='SELECT';
+            if pol is null or position('( SELECT AUTH.UID()' in upper(pol))=0
+              or position('active' in pol)=0 then
+              raise exception 'profile RLS initplan tuning assertion failed: %', pol;
+            end if;
+            select with_check into pol from pg_policies
+              where schemaname='public' and tablename='transactions'
+                and policyname='operators can create transactions' and cmd='INSERT';
+            if pol is null or position('( SELECT AUTH.UID()' in upper(pol))=0
+              or position('current_user_role' in pol)=0 then
+              raise exception 'transaction RLS initplan tuning assertion failed: %', pol;
+            end if;
+          end $$;
+          select 'isolated database catalog assertions passed' as result;
+          SQL
+
+      - name: Exercise read-only catalog fingerprint on disposable database
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          create schema supabase_migrations;
+          create table supabase_migrations.schema_migrations (
+            version text primary key,
+            name text not null
+          );
+          insert into supabase_migrations.schema_migrations(version, name)
+          values ('20261023000000', 'atomic_transaction_backend');
+          SQL
+          psql -v ON_ERROR_STOP=1 -f supabase/tests/production_catalog_fingerprint.sql
+
+      - name: Seed isolated test records
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          insert into auth.users(id) values
+            ('11111111-1111-4111-8111-111111111111'),
+            ('55555555-5555-4555-8555-555555555555'),
+            ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+          insert into public.profiles(id, display_name, username, role, active)
+          values
+            ('11111111-1111-4111-8111-111111111111', 'Test Operator', 'test-operator', 'OPERATOR', true),
+            ('55555555-5555-4555-8555-555555555555', 'Inactive Operator', 'inactive-operator', 'OPERATOR', false),
+            ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb', 'Test Admin', 'test-admin', 'ADMIN', true);
+          insert into public.employees(id, employee_code, id_type, name, active)
+          values
+            ('22222222-2222-4222-8222-222222222222', '000001', 'EMPLOYEE', 'Test Employee', true),
+            ('66666666-6666-4666-8666-666666666666', '000004', 'EMPLOYEE', 'Inactive Employee', false);
+          -- Simulate an existing production guest code with the sequence still behind it.
+          insert into public.employees(id, guest_code, id_type, name, active)
+          values
+            ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'GUEST-0100', 'GUEST', 'Legacy Guest', true);
+          insert into public.products(id, name, active)
+          values
+            ('33333333-3333-4333-8333-333333333333', 'Test Milk', true),
+            ('77777777-7777-4777-8777-777777777777', 'Inactive Milk', false);
+          insert into public.product_variants(id, product_id, variant_name, unit_volume_ml, price, active)
+          values
+            ('44444444-4444-4444-8444-444444444444', '33333333-3333-4333-8333-333333333333', '1 L', 1000, 75, true),
+            ('88888888-8888-4888-8888-888888888888', '33333333-3333-4333-8333-333333333333', 'Inactive variant', 500, 30, false),
+            ('99999999-9999-4999-8999-999999999998', '77777777-7777-4777-8777-777777777777', 'Variant of inactive product', 500, 30, true);
+          SQL
+
+      - name: Verify guarded profile access updates
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          set request.jwt.claim.sub = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+          set role authenticated;
+          do $profile_access_test$
+          declare rejected boolean := false;
+          begin
+            perform public.update_profile_access(
+              '11111111-1111-4111-8111-111111111111',
+              'ADMIN'::public.user_role,
+              true
+            );
+            if not exists (
+              select 1 from public.profiles
+              where id = '11111111-1111-4111-8111-111111111111'
+                and role = 'ADMIN'::public.user_role and active = true
+            ) then
+              raise exception 'admin could not update another user role';
+            end if;
+
+            perform public.update_profile_access(
+              '11111111-1111-4111-8111-111111111111',
+              'OPERATOR'::public.user_role,
+              false
+            );
+            if not exists (
+              select 1 from public.profiles
+              where id = '11111111-1111-4111-8111-111111111111'
+                and role = 'OPERATOR'::public.user_role and active = false
+            ) then
+              raise exception 'admin could not update another user status';
+            end if;
+
+            begin
+              perform public.update_profile_access(
+                'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+                'OPERATOR'::public.user_role,
+                false
+              );
+              raise exception 'expected self role/status change to be rejected';
+            exception when sqlstate '42501' then
+              rejected := true;
+            end;
+            if not rejected then
+              raise exception 'admin was able to change own access';
+            end if;
+          end $profile_access_test$;
+          reset role;
+          set request.jwt.claim.sub = '11111111-1111-4111-8111-111111111111';
+          set role authenticated;
+          do $profile_access_test$
+          declare rejected boolean := false;
+          begin
+            begin
+              perform public.update_profile_access(
+                '55555555-5555-4555-8555-555555555555',
+                'OPERATOR'::public.user_role,
+                false
+              );
+              raise exception 'expected non-admin profile access change to be rejected';
+            exception when sqlstate '42501' then
+              rejected := true;
+            end;
+            if not rejected then
+              raise exception 'operator was able to change another profile access';
+            end if;
+          end $profile_access_test$;
+          reset role;
+          -- Restore the shared operator fixture for later transaction integration tests.
+          set request.jwt.claim.sub = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+          set role authenticated;
+          select public.update_profile_access(
+            '11111111-1111-4111-8111-111111111111',
+            'OPERATOR'::public.user_role,
+            true
+          );
+          reset role;
+          SQL
+
+      - name: Verify atomic product variant writes and authorization
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          set request.jwt.claim.sub = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+          set role authenticated;
+          do $product_test$
+          declare
+            created_variant uuid;
+            before_products bigint;
+            after_products bigint;
+            rejected boolean := false;
+          begin
+            select count(*) into before_products from public.products;
+            created_variant := public.save_product_variant(
+              null, 'CI Atomic Product', '500 ML', 500, 38.00
+            );
+            if created_variant is null then
+              raise exception 'save_product_variant did not return the created variant id';
+            end if;
+            if not exists (
+              select 1 from public.product_variants pv
+              join public.products p on p.id = pv.product_id
+              where pv.id = created_variant
+                and p.name = 'CI Atomic Product'
+                and pv.variant_name = '500 ML'
+                and pv.unit_volume_ml = 500
+                and pv.price = 38.00
+            ) then
+              raise exception 'atomic product/variant creation did not persist expected values';
+            end if;
+
+            perform public.save_product_variant(
+              created_variant, 'CI Atomic Product', '500 ML', 500, 39.00
+            );
+            if not exists (
+              select 1 from public.product_variants
+              where id = created_variant and price = 39.00
+            ) then
+              raise exception 'product variant update did not persist';
+            end if;
+
+            select count(*) into before_products from public.products;
+            begin
+              perform public.save_product_variant(
+                'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+                'CI Must Roll Back Product', '1 L', 1000, 70.00
+              );
+              raise exception 'expected missing variant update to fail';
+            exception when sqlstate 'P0002' then
+              rejected := true;
+            end;
+            if not rejected then
+              raise exception 'missing variant update was not rejected';
+            end if;
+            select count(*) into after_products from public.products;
+            if after_products <> before_products then
+              raise exception 'failed variant update left a partial product row';
+            end if;
+          end $product_test$;
+          reset role;
+          set request.jwt.claim.sub = '11111111-1111-4111-8111-111111111111';
+          set role authenticated;
+          do $product_test$
+          declare rejected boolean := false;
+          begin
+            begin
+              perform public.save_product_variant(
+                null, 'CI Operator Must Not Create Product', '500 ML', 500, 38.00
+              );
+              raise exception 'expected operator product write to be rejected';
+            exception when sqlstate '42501' then
+              rejected := true;
+            end;
+            if not rejected then
+              raise exception 'operator was able to invoke admin-only product write';
+            end if;
+          end $product_test$;
+          reset role;
+          SQL
+
+      - name: Verify atomic success and rollback on invalid later item
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          set request.jwt.claim.sub = '11111111-1111-4111-8111-111111111111';
+          set role authenticated;
+          do $$
+          declare
+            n integer;
+            created_id uuid;
+            stored_price numeric(10,2);
+            stored_total numeric(12,2);
+            stored_operator uuid;
+          begin
+            select count(*), (array_agg(transaction_id))[1] into n, created_id
+            from public.create_transaction_batch(
+              '22222222-2222-4222-8222-222222222222',
+              '[{"variant_id":"44444444-4444-4444-8444-444444444444","quantity":2,"price":0.01,"operator_id":"55555555-5555-4555-8555-555555555555"}]'::jsonb
+            );
+            if n <> 1 then raise exception 'expected one inserted transaction, got %', n; end if;
+            select t.unit_price, t.total_amount, t.operator_id into stored_price, stored_total, stored_operator
+            from public.transactions t where t.id = created_id;
+            if stored_price <> 75 then
+              raise exception 'client-supplied price was trusted: stored % instead of catalog price 75', stored_price;
+            end if;
+            if stored_total <> 150 then
+              raise exception 'generated total_amount was not derived from quantity and catalog price: stored %', stored_total;
+            end if;
+            if stored_operator <> '11111111-1111-4111-8111-111111111111'::uuid then
+              raise exception 'client-supplied operator identity was trusted: stored %', stored_operator;
+            end if;
+          end $$;
+          reset role;
+          do $$
+          declare before_count bigint; after_count bigint;
+          begin
+            select count(*) into before_count from public.transactions;
+            begin
+              perform * from public.create_transaction_batch(
+                '22222222-2222-4222-8222-222222222222',
+                '[{"variant_id":"44444444-4444-4444-8444-444444444444","quantity":1},{"variant_id":"99999999-9999-4999-8999-999999999999","quantity":1}]'::jsonb
+              );
+              raise exception 'expected invalid item to fail';
+            exception when others then
+              if sqlerrm = 'expected invalid item to fail' then raise; end if;
+            end;
+            select count(*) into after_count from public.transactions;
+            if after_count <> before_count then
+              raise exception 'atomicity failure: transaction rows changed from % to %', before_count, after_count;
+            end if;
+          end $$;
+          do $$
+          declare rejected boolean := false;
+          begin
+            begin
+              perform * from public.create_transaction_batch(
+                '22222222-2222-4222-8222-222222222222',
+                '[{"variant_id":"44444444-4444-4444-8444-444444444444","quantity":0}]'::jsonb
+              );
+            exception when sqlstate '22023' then
+              if sqlerrm = 'Quantity must be between 1 and 10000' then
+                rejected := true;
+              else
+                raise;
+              end if;
+            end;
+            if not rejected then raise exception 'zero quantity was accepted'; end if;
+          end $$;
+          set request.jwt.claim.sub = '55555555-5555-4555-8555-555555555555';
+          set role authenticated;
+          do $$
+          declare rejected boolean := false;
+          begin
+            begin
+              perform * from public.create_transaction_batch(
+                '22222222-2222-4222-8222-222222222222',
+                '[{"variant_id":"44444444-4444-4444-8444-444444444444","quantity":1}]'::jsonb
+              );
+            exception when sqlstate '42501' then
+              if sqlerrm = 'Your account is inactive or not authorized' then
+                rejected := true;
+              else
+                raise;
+              end if;
+            end;
+            if not rejected then raise exception 'inactive operator was allowed to create a transaction'; end if;
+          end $$;
+          reset role;
+          set request.jwt.claim.sub = '';
+          set role authenticated;
+          do $$
+          declare rejected boolean := false;
+          begin
+            begin
+              perform * from public.create_transaction_batch(
+                '22222222-2222-4222-8222-222222222222',
+                '[{"variant_id":"44444444-4444-4444-8444-444444444444","quantity":1}]'::jsonb
+              );
+            exception when sqlstate '28000' then
+              if sqlerrm = 'Authentication required' then
+                rejected := true;
+              else
+                raise;
+              end if;
+            end;
+            if not rejected then raise exception 'unauthenticated transaction was allowed'; end if;
+          end $$;
+          reset role;
+          select 'transaction success, rollback, quantity, inactive-user, and unauthenticated assertions passed' as result;
+          SQL
+
+
+      - name: Reject inactive employees and unavailable products
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          set request.jwt.claim.sub = '11111111-1111-4111-8111-111111111111';
+          set role authenticated;
+          do $$
+          declare rejected boolean; v_variant uuid;
+          begin
+            rejected := false;
+            begin
+              perform * from public.create_transaction_batch(
+                '66666666-6666-4666-8666-666666666666',
+                '[{"variant_id":"44444444-4444-4444-8444-444444444444","quantity":1}]'::jsonb
+              );
+            exception when sqlstate '22023' then
+              if sqlerrm = 'Select an active employee or guest' then rejected := true; else raise; end if;
+            end;
+            if not rejected then raise exception 'inactive employee was accepted'; end if;
+
+            foreach v_variant in array array[
+              '88888888-8888-4888-8888-888888888888'::uuid,
+              '99999999-9999-4999-8999-999999999998'::uuid
+            ] loop
+              rejected := false;
+              begin
+                perform * from public.create_transaction_batch(
+                  '22222222-2222-4222-8222-222222222222',
+                  jsonb_build_array(jsonb_build_object('variant_id', v_variant, 'quantity', 1))
+                );
+              exception when sqlstate '22023' then
+                if sqlerrm = 'A selected product is inactive or no longer available' then rejected := true; else raise; end if;
+              end;
+              if not rejected then raise exception 'inactive variant or parent product was accepted: %', v_variant; end if;
+            end loop;
+          end $$;
+          reset role;
+          select 'inactive employee, inactive variant, and inactive product assertions passed' as result;
+          SQL
+
+      - name: Verify employee-code validation remains enforced
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          set request.jwt.claim.sub = '11111111-1111-4111-8111-111111111111';
+          set role authenticated;
+          do $$
+          declare rejected boolean := false;
+          begin
+            begin
+              perform public.create_employee('ABC123', 'Invalid Code Test', null, null);
+            exception when others then
+              if sqlerrm = 'Employee code must contain exactly 6 numeric digits' then
+                rejected := true;
+              else
+                raise;
+              end if;
+            end;
+            if not rejected then raise exception 'invalid employee code was accepted'; end if;
+            perform public.create_employee('000002', 'Valid Code Test', null, null);
+            rejected := false;
+            begin
+              perform public.create_employee('000003', '   ', null, null);
+            exception when others then
+              if sqlerrm = 'Employee name is required' then
+                rejected := true;
+              else
+                raise;
+              end if;
+            end;
+            if not rejected then raise exception 'blank employee name was accepted'; end if;
+            reset role;
+            begin
+              insert into public.employees(employee_code, id_type, name, active)
+              values ('12AB56', 'EMPLOYEE', 'Constraint Test', true);
+            exception when check_violation then
+              rejected := true;
+            end;
+            if not rejected then raise exception 'employee-code CHECK constraint did not reject invalid code'; end if;
+          end $$;
+          reset role;
+          select 'employee-code validation assertions passed' as result;
+          SQL
+
+      - name: Verify guest creation and duplicate-phone lookup use secure RPCs
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          set request.jwt.claim.sub = '11111111-1111-4111-8111-111111111111';
+          set role authenticated;
+          do $guest_test$
+          declare
+            v_generated public.employees;
+            v_custom public.employees;
+            v_match public.employees;
+          begin
+            v_generated := public.create_guest_employee_with_code(
+              'Generated Guest Test', '5550101234', 'QA', null
+            );
+            if v_generated.guest_code is distinct from 'GUEST-0101' then
+              raise exception 'guest RPC did not reconcile the sequence beyond the existing GUEST-0100 code; got %', v_generated.guest_code;
+            end if;
+
+            select * into v_match
+            from public.find_guest_by_phone('(555) 010-1234')
+            limit 1;
+            if v_match.id is distinct from v_generated.id then
+              raise exception 'normalized duplicate-phone lookup did not return the created guest';
+            end if;
+
+            v_custom := public.create_guest_employee_with_code(
+              'Custom Guest Test', '5550105678', 'QA', 'GUEST-CI-0001'
+            );
+            if v_custom.guest_code <> 'GUEST-CI-0001' then
+              raise exception 'custom guest ID was not preserved';
+            end if;
+
+            begin
+              perform public.create_guest_employee_with_code(
+                'Duplicate Guest Test', null, null, 'GUEST-CI-0001'
+              );
+              raise exception 'duplicate guest ID was accepted';
+            exception when others then
+              if sqlerrm = 'duplicate guest ID was accepted' then raise; end if;
+              if sqlerrm <> 'Guest ID already exists' then raise; end if;
+            end;
+          end $guest_test$;
+          reset role;
+          select 'secure guest creation, generated/custom IDs, and normalized duplicate lookup assertions passed' as result;
+          SQL
+
+      - name: Verify concurrent guest registrations receive unique sequential codes
+        shell: bash
+        run: |
+          set -euo pipefail
+          tmpdir="$(mktemp -d)"
+          trap 'rm -rf "$tmpdir"' EXIT
+          pids=()
+          for i in $(seq 1 12); do
+            (
+              phone="$(printf '555019%04d' "$i")"
+              psql -X -qAt -v ON_ERROR_STOP=1 >"$tmpdir/$i.out" 2>"$tmpdir/$i.err" <<SQL
+          begin;
+          set request.jwt.claim.sub = '11111111-1111-4111-8111-111111111111';
+          set role authenticated;
+          select guest_code
+          from public.create_guest_employee_with_code(
+            'Parallel Guest $i', '$phone', 'CI', null
+          );
+          commit;
+          SQL
+            ) &
+            pids+=("$!")
+          done
+
+          failed=0
+          for pid in "${pids[@]}"; do
+            if ! wait "$pid"; then failed=1; fi
+          done
+          if [ "$failed" -ne 0 ]; then
+            cat "$tmpdir"/*.err >&2
+            echo "At least one concurrent guest registration failed" >&2
+            exit 1
+          fi
+
+          cat "$tmpdir"/*.out | grep -E '^GUEST-[0-9]+$' | sort >"$tmpdir/codes.txt"
+          count="$(wc -l <"$tmpdir/codes.txt" | tr -d ' ')"
+          unique_count="$(sort -u "$tmpdir/codes.txt" | wc -l | tr -d ' ')"
+          if [ "$count" -ne 12 ] || [ "$unique_count" -ne 12 ]; then
+            echo "Expected 12 unique generated guest codes; got $count rows and $unique_count unique codes" >&2
+            cat "$tmpdir"/*.out >&2
+            exit 1
+          fi
+
+          expected="$(seq -f 'GUEST-%04g' 102 113)"
+          if [ "$(cat "$tmpdir/codes.txt")" != "$expected" ]; then
+            echo "Concurrent guest codes were not the expected contiguous sequence GUEST-0102..GUEST-0113" >&2
+            cat "$tmpdir/codes.txt" >&2
+            exit 1
+          fi
+          echo "12 concurrent guest registrations received unique sequential codes GUEST-0102 through GUEST-0113."
+
+      - name: Ensure Admin employee page uses backend RPCs, not direct table inserts
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          source = Path("admin-web/src/app/employees/new/page.tsx").read_text()
+          assert 'supabase.rpc("create_employee"' in source
+          assert 'supabase.rpc("create_guest_employee_with_code"' in source
+          assert 'supabase.rpc("find_guest_by_phone"' in source
+          assert 'supabase.rpc("next_guest_code"' not in source
+          assert '.from("employees").insert' not in source
+          print("Admin employee creation is routed through secured backend RPCs.")
+          PY
+
+      - name: Verify employee RPCs reject inactive users without a role
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          set request.jwt.claim.sub = '55555555-5555-4555-8555-555555555555';
+          set role authenticated;
+          do $$
+          declare rejected boolean := false;
+          begin
+            begin
+              perform public.create_employee('000003', 'Inactive User Test', null, null);
+            exception when others then
+              if sqlerrm = 'Not authorized' then
+                rejected := true;
+              else
+                raise;
+              end if;
+            end;
+            if not rejected then raise exception 'inactive user was allowed to create an employee'; end if;
+          end $$;
+          reset role;
+          select 'inactive employee-RPC authorization assertion passed' as result;
+          SQL
+
+      - name: Validate catalog fingerprint under restricted metadata role
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          create role catalog_audit_ro nologin
+            nosuperuser nocreatedb nocreaterole noinherit noreplication nobypassrls;
+          grant usage on schema public, private to catalog_audit_ro;
+          alter role catalog_audit_ro set default_transaction_read_only = on;
+          alter role catalog_audit_ro set statement_timeout = '30s';
+          SQL
+          # Run SET ROLE and the fingerprint query in the same psql invocation.
+          # Capture stdout/stderr separately so a blank or malformed result is diagnosable.
+          {
+            printf '%s\n' 'SET ROLE catalog_audit_ro;'
+            cat supabase/tests/catalog_fingerprint_json.sql
+          } > /tmp/restricted-catalog-fingerprint.sql
+          if ! psql -X -q -A -t -v ON_ERROR_STOP=1 -b \
+            -f /tmp/restricted-catalog-fingerprint.sql \
+            > /tmp/restricted-catalog-fingerprint.json \
+            2> /tmp/restricted-catalog-fingerprint.stderr; then
+            echo "Restricted-role fingerprint SQL execution failed." >&2
+            cat /tmp/restricted-catalog-fingerprint.stderr >&2
+            exit 1
+          fi
+          output_bytes="$(wc -c < /tmp/restricted-catalog-fingerprint.json | tr -d ' ')"
+          non_whitespace_bytes="$(tr -d '[:space:]' < /tmp/restricted-catalog-fingerprint.json | wc -c | tr -d ' ')"
+          echo "Restricted-role fingerprint stdout bytes: $output_bytes; non-whitespace bytes: $non_whitespace_bytes"
+          if [[ "$non_whitespace_bytes" -eq 0 ]]; then
+            echo "Restricted-role fingerprint produced only whitespace. Captured psql stderr:" >&2
+            cat /tmp/restricted-catalog-fingerprint.stderr >&2
+            echo "Captured psql stdout (visible characters):" >&2
+            cat -A /tmp/restricted-catalog-fingerprint.json >&2
+            echo "Executed SQL file tail:" >&2
+            tail -n 8 /tmp/restricted-catalog-fingerprint.sql >&2
+            exit 1
+          fi
+          if ! python3 -m json.tool /tmp/restricted-catalog-fingerprint.json > /dev/null; then
+            echo "Restricted-role fingerprint output is not valid JSON. First 400 bytes:" >&2
+            head -c 400 /tmp/restricted-catalog-fingerprint.json >&2
+            echo >&2
+            echo "Captured psql stderr:" >&2
+            cat /tmp/restricted-catalog-fingerprint.stderr >&2
+            exit 1
+          fi
+          echo "Restricted-role catalog fingerprint returned valid JSON."
+          # Ensure the audit role has no application-table SELECT grants.
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          begin
+            if exists (
+              select 1
+              from information_schema.role_table_grants
+              where grantee = 'catalog_audit_ro'
+                and privilege_type = 'SELECT'
+            ) then
+              raise exception 'catalog audit role unexpectedly has SELECT grants on application tables';
+            end if;
+          end $$;
+          SQL
+
+      - name: Capture disposable catalog fingerprint and validate drift reporter
+        run: |
+          mkdir -p artifacts
+          psql -X -A -t -v ON_ERROR_STOP=1 -f supabase/tests/catalog_fingerprint_json.sql > artifacts/disposable-catalog-fingerprint.json
+          python3 -m json.tool artifacts/disposable-catalog-fingerprint.json > /dev/null
+          python3 supabase/scripts/compare_catalog_fingerprints.py artifacts/disposable-catalog-fingerprint.json artifacts/disposable-catalog-fingerprint.json --fail-on-diff
+
+      - name: Upload disposable catalog fingerprint
+        uses: actions/upload-artifact@v4
+        with:
+          name: disposable-catalog-fingerprint-${{ github.sha }}
+          path: artifacts/disposable-catalog-fingerprint.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Capture production catalog and compare against disposable database
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.compare_production_catalog }}
+        env:
+          PRODUCTION_DATABASE_URL: ${{ secrets.SUPABASE_PRODUCTION_READONLY_DATABASE_URL }}
+          PGOPTIONS: "-c default_transaction_read_only=on"
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${PRODUCTION_DATABASE_URL}" ]]; then
+            echo "::error::Set SUPABASE_PRODUCTION_READONLY_DATABASE_URL to a read-only production database connection string before enabling this comparison."
+            exit 1
+          fi
+          # The supplied login must be a member of catalog_audit_ro. Explicitly
+          # drop into that restricted role before reading production metadata.
+          {
+            printf '%s\\n' 'SET ROLE catalog_audit_ro;'
+            cat supabase/tests/catalog_fingerprint_json.sql
+          } > /tmp/production-catalog-fingerprint.sql
+          psql -X -q -A -t "${PRODUCTION_DATABASE_URL}" -v ON_ERROR_STOP=1 \
+            -f /tmp/production-catalog-fingerprint.sql \
+            > artifacts/production-catalog-fingerprint.json
+          python3 -m json.tool artifacts/production-catalog-fingerprint.json > /dev/null
+          python3 supabase/scripts/compare_catalog_fingerprints.py \
+            artifacts/production-catalog-fingerprint.json \
+            artifacts/disposable-catalog-fingerprint.json \
+            --json > artifacts/production-vs-disposable-catalog-diff.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path("artifacts/production-vs-disposable-catalog-diff.json").read_text())
+          print(f"Production/disposable catalog differences: {report['difference_count']}")
+          for item in report["differences"]:
+              # Keep logs redacted: function definitions, policy expressions and ACL details
+              # are present in the full diff and must not be printed into public workflow logs.
+              print(f"- {item['kind']}: {item['path']}")
+          PY

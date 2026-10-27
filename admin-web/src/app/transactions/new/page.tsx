@@ -60,7 +60,7 @@ export default function NewTransactionPage() {
   const variantMap = useMemo(() => new Map(variants.map((variant) => [variant.id, variant])), [variants]);
   const selectedEmployee = employees.find((employee) => employee.id === employeeId);
   const quantityNumber = Number(quantity);
-  const validQuantity = Number.isInteger(quantityNumber) && quantityNumber >= 1;
+  const validQuantity = Number.isInteger(quantityNumber) && quantityNumber >= 1 && quantityNumber <= 10000;
 
   const cartDetails = cart.map((item) => {
     const variant = variantMap.get(item.variantId);
@@ -79,12 +79,21 @@ export default function NewTransactionPage() {
       return;
     }
     if (!variantId || !validQuantity) {
-      setError("Select a product and enter a quantity of at least 1.");
+      setError("Select a product and enter a whole-number quantity from 1 to 10000.");
+      return;
+    }
+    const existing = cart.find((item) => item.variantId === variantId);
+    if (existing && existing.quantity + quantityNumber > 10000) {
+      setError("The total quantity for one product variant cannot exceed 10000.");
+      return;
+    }
+    if (!existing && cart.length >= 100) {
+      setError("A transaction can contain at most 100 product variants.");
       return;
     }
     setCart((current) => {
-      const existing = current.find((item) => item.variantId === variantId);
-      if (existing) {
+      const currentItem = current.find((item) => item.variantId === variantId);
+      if (currentItem) {
         return current.map((item) => item.variantId === variantId ? { ...item, quantity: item.quantity + quantityNumber } : item);
       }
       return [...current, { variantId, quantity: quantityNumber }];
@@ -94,8 +103,8 @@ export default function NewTransactionPage() {
   }
 
   function updateCartQuantity(itemVariantId: string, nextQuantity: string) {
-    const parsed = Math.floor(Number(nextQuantity));
-    if (!Number.isFinite(parsed) || parsed < 1) return;
+    const parsed = Number(nextQuantity);
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 10000) return;
     setCart((current) => current.map((item) => item.variantId === itemVariantId ? { ...item, quantity: parsed } : item));
   }
 
@@ -111,60 +120,33 @@ export default function NewTransactionPage() {
       setError("Select an employee and add at least one product.");
       return;
     }
-    if (cart.some((item) => !Number.isInteger(item.quantity) || item.quantity < 1)) {
-      setError("Quantity must be a whole number of at least 1.");
+    if (cart.length > 100) {
+      setError("A transaction can contain at most 100 product variants.");
+      return;
+    }
+    if (cart.some((item) => !Number.isInteger(item.quantity) || item.quantity < 1 || item.quantity > 10000)) {
+      setError("Each quantity must be a whole number from 1 to 10000.");
       return;
     }
     setSaving(true);
 
-    const { data: sessionData } = await supabase.auth.getSession();
-    const operatorId = sessionData.session?.user.id;
-    if (!operatorId) {
-      setError("Your session has expired. Please sign in again.");
-      setSaving(false);
-      return;
-    }
+    const { error: transactionError } = await supabase.rpc("create_transaction_batch", {
+      p_employee_id: employeeId,
+      p_items: cart.map((item) => ({
+        variant_id: item.variantId,
+        quantity: item.quantity,
+      })),
+    });
 
-    const { data: currentEmployee } = await supabase.from("employees").select("id").eq("id", employeeId).eq("active", true).maybeSingle();
-    if (!currentEmployee) {
-      setError("The selected employee is no longer active. Refresh and try again.");
-      setSaving(false);
-      return;
-    }
-
-    const variantIds = cart.map((item) => item.variantId);
-    const { data: currentVariants, error: variantError } = await supabase
-      .from("product_variants").select("id,price").in("id", variantIds).eq("active", true);
-
-    if (variantError) {
-      setError("Could not verify current product prices. Refresh and try again.");
-      setSaving(false);
-      return;
-    }
-    if (!currentVariants || currentVariants.length !== variantIds.length) {
-      setError("One or more selected products are no longer active. Refresh and try again.");
-      setSaving(false);
-      return;
-    }
-
-    const currentPriceMap = new Map(currentVariants.map((variant) => [variant.id, Number(variant.price)]));
-    const rows = cart.map((item) => ({
-      employee_id: currentEmployee.id,
-      product_variant_id: item.variantId,
-      quantity: item.quantity,
-      unit_price: currentPriceMap.get(item.variantId),
-      operator_id: operatorId,
-    }));
-
-    if (rows.some((row) => row.unit_price === undefined)) {
-      setError("Could not verify one or more product prices. Refresh and try again.");
-      setSaving(false);
-      return;
-    }
-
-    const { error: insertError } = await supabase.from("transactions").insert(rows);
-    if (insertError) {
-      setError("Transaction could not be saved. Check your connection and try again. If it still fails, ask an administrator to review access and product status.");
+    if (transactionError) {
+      const message = transactionError.message || "";
+      if (message.includes("Authentication required") || message.includes("inactive or not authorized")) {
+        setError("Your session may have expired or your account is inactive. Please sign in again or contact an administrator.");
+      } else if (message.includes("no longer available") || message.includes("active employee")) {
+        setError("The selected employee or product is no longer active. Refresh and try again.");
+      } else {
+        setError("Transaction could not be saved. Please refresh and try again. If the issue continues, ask an administrator to review the backend.");
+      }
       setSaving(false);
       return;
     }
