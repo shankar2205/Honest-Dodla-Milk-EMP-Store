@@ -62,9 +62,13 @@ where n.nspname in ('public', 'private')
     'create_transaction_batch',
     'create_employee',
     'create_guest_employee',
+    'create_guest_employee_with_code',
+    'find_guest_by_phone',
     'next_guest_code',
     'current_user_role',
-    'operator_daily_sales'
+    'operator_daily_sales',
+    'set_transaction_price',
+    'set_updated_at'
   )
 order by n.nspname, p.proname, pg_get_function_identity_arguments(p.oid);
 
