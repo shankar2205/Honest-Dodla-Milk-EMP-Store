@@ -33,6 +33,30 @@ begin
     raise exception 'anon must not be able to execute create_transaction_batch';
   end if;
 
+  select p.prosecdef, p.proconfig
+    into v_fn
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'public'
+    and p.proname = 'save_product_variant'
+    and pg_get_function_identity_arguments(p.oid) =
+      'p_variant_id uuid, p_product_name text, p_variant_name text, p_unit_volume_ml integer, p_price numeric';
+
+  if not found then
+    raise exception 'Missing save_product_variant(uuid,text,text,integer,numeric)';
+  end if;
+  if v_fn.prosecdef then
+    raise exception 'save_product_variant must be SECURITY INVOKER so table RLS remains in force';
+  end if;
+  if not coalesce(v_fn.proconfig @> array['search_path=""'], false) then
+    raise exception 'save_product_variant must set an empty search_path';
+  end if;
+  if not has_function_privilege('authenticated', 'public.save_product_variant(uuid,text,text,integer,numeric)', 'EXECUTE') then
+    raise exception 'authenticated must be able to execute save_product_variant';
+  end if;
+  if has_function_privilege('anon', 'public.save_product_variant(uuid,text,text,integer,numeric)', 'EXECUTE') then
+    raise exception 'anon must not be able to execute save_product_variant';
+  end if;
 
   foreach v_policy in array array['find_guest_by_phone', 'create_guest_employee_with_code']
   loop
