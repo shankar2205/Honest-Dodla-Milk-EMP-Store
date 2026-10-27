@@ -1,5 +1,5 @@
 -- Keep product + sellable variant writes atomic for the admin web.
--- This function is SECURITY INVOKER: table RLS still governs every write.
+-- This SECURITY DEFINER function performs the privileged catalog writes only after checking the active ADMIN role.
 -- Product identity is resolved on the server so a failed variant write rolls back
 -- any newly-created product instead of leaving a partial catalog entry.
 
@@ -12,7 +12,7 @@ create or replace function public.save_product_variant(
 )
 returns uuid
 language plpgsql
-security invoker
+security definer
 set search_path = ''
 as $function$
 declare
