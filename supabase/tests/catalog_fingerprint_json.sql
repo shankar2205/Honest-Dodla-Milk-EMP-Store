@@ -3,9 +3,6 @@
 --   psql -X -A -t "$DATABASE_URL" -v ON_ERROR_STOP=1 -f supabase/tests/catalog_fingerprint_json.sql > catalog.json
 -- Capture each database with this same file/version. This contains metadata only;
 -- it intentionally excludes application rows, sequence last_value, and migration history.
-\pset format unaligned
-\pset tuples_only on
-
 select jsonb_pretty(jsonb_build_object(
   'extensions', coalesce((
     select jsonb_agg(to_jsonb(x) order by x.extname)
