@@ -39,7 +39,19 @@ export default function UsersPage() {
       return;
     }
     setError("");
-    const { error: e } = await supabase.from("profiles").update(patch).eq("id", id);
+    const target = users.find((user) => user.id === id);
+    if (!target) {
+      setError("Could not find that user. Refresh and try again.");
+      return;
+    }
+
+    const nextRole = patch.role ?? target.role;
+    const nextActive = patch.active ?? target.active;
+    const { error: e } = await supabase.rpc("update_profile_access", {
+      p_user_id: id,
+      p_role: nextRole,
+      p_active: nextActive,
+    });
     if (e) setError(e.message);
     else load();
   }
