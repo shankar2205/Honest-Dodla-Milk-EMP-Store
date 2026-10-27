@@ -151,7 +151,6 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261026000000_restrict_guest_code_generator.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261027000000_restore_admin_guest_employee_rpcs.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261027100000_fix_generated_transaction_total_trigger.sql
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261027110000_add_employee_code_check_not_valid.sql
 
       - name: Run shared backend migration assertions
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/backend_migration_assertions.sql
