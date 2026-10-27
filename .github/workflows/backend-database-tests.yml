@@ -503,41 +503,7 @@ jobs:
             exit 1
           fi
 
-          cat "$tmpdir"/*.out | grep -E '^GUEST-[0-9]+        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          source = Path("admin-web/src/app/employees/new/page.tsx").read_text()
-          assert 'supabase.rpc("create_employee"' in source
-          assert 'supabase.rpc("create_guest_employee_with_code"' in source
-          assert 'supabase.rpc("find_guest_by_phone"' in source
-          assert 'supabase.rpc("next_guest_code"' not in source
-          assert '.from("employees").insert' not in source
-          print("Admin employee creation is routed through secured backend RPCs.")
-          PY
-
-      - name: Verify employee RPCs reject inactive users without a role
-        run: |
-          psql -v ON_ERROR_STOP=1 <<'SQL'
-          set request.jwt.claim.sub = '55555555-5555-4555-8555-555555555555';
-          set role authenticated;
-          do $$
-          declare rejected boolean := false;
-          begin
-            begin
-              perform public.create_employee('000003', 'Inactive User Test', null, null);
-            exception when others then
-              if sqlerrm = 'Not authorized' then
-                rejected := true;
-              else
-                raise;
-              end if;
-            end;
-            if not rejected then raise exception 'inactive user was allowed to create an employee'; end if;
-          end $$;
-          reset role;
-          select 'inactive employee-RPC authorization assertion passed' as result;
-          SQL
- | sort >"$tmpdir/codes.txt"
+          cat "$tmpdir"/*.out | grep -E '^GUEST-[0-9]+$' | sort >"$tmpdir/codes.txt"
           count="$(wc -l <"$tmpdir/codes.txt" | tr -d ' ')"
           unique_count="$(sort -u "$tmpdir/codes.txt" | wc -l | tr -d ' ')"
           if [ "$count" -ne 12 ] || [ "$unique_count" -ne 12 ]; then
