@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "compare_catalog_fingerprints.py"
+sys.path.insert(0, str(SCRIPT.parent))
 
 
 class CatalogFingerprintComparisonTests(unittest.TestCase):
