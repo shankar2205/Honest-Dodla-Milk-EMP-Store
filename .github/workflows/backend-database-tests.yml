@@ -9,6 +9,12 @@ on:
       - 'supabase/tests/**'
       - '.github/workflows/backend-database-tests.yml'
   workflow_dispatch:
+    inputs:
+      compare_production_catalog:
+        description: "Run read-only production-vs-disposable catalog comparison (requires SUPABASE_PRODUCTION_READONLY_DATABASE_URL secret)"
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   postgres-integration:
@@ -570,3 +576,43 @@ jobs:
           path: artifacts/disposable-catalog-fingerprint.json
           if-no-files-found: error
           retention-days: 14
+
+      - name: Capture production catalog and compare against disposable database
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.compare_production_catalog }}
+        env:
+          PRODUCTION_DATABASE_URL: ${{ secrets.SUPABASE_PRODUCTION_READONLY_DATABASE_URL }}
+          PGOPTIONS: "-c default_transaction_read_only=on"
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${PRODUCTION_DATABASE_URL}" ]]; then
+            echo "::error::Set SUPABASE_PRODUCTION_READONLY_DATABASE_URL to a read-only production database connection string before enabling this comparison."
+            exit 1
+          fi
+          psql -X -A -t "${PRODUCTION_DATABASE_URL}" -v ON_ERROR_STOP=1 \
+            -f supabase/tests/catalog_fingerprint_json.sql \
+            > artifacts/production-catalog-fingerprint.json
+          python3 -m json.tool artifacts/production-catalog-fingerprint.json > /dev/null
+          python3 supabase/scripts/compare_catalog_fingerprints.py \
+            artifacts/production-catalog-fingerprint.json \
+            artifacts/disposable-catalog-fingerprint.json \
+            --json > artifacts/production-vs-disposable-catalog-diff.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path("artifacts/production-vs-disposable-catalog-diff.json").read_text())
+          print(f"Production/disposable catalog differences: {report['difference_count']}")
+          for item in report["differences"]:
+              print(f"- {item['kind']}: {item['path']}")
+          PY
+
+      - name: Upload production comparison artifacts
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.compare_production_catalog && success() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-vs-disposable-catalog-${{ github.sha }}
+          path: |
+            artifacts/production-catalog-fingerprint.json
+            artifacts/production-vs-disposable-catalog-diff.json
+          if-no-files-found: error
+          retention-days: 7
