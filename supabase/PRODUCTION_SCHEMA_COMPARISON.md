@@ -99,3 +99,31 @@ The production `create_employee` and `create_guest_employee` search paths are a 
 ### Explicitly not concluded
 
 This targeted read did not retrieve every function body, every object grant, trigger definition, index usage statistic, or all migration source SQL. The correct next step is a reviewed diff between the captured production catalog and a clean disposable baseline, followed by focused tests. It is not approval to apply migrations to production.
+
+## Read-only reconciliation update (2026-10-27)
+
+A further catalog comparison was run against project `bbnvqktefmdpgzlqlzml`. It performed catalog/data SELECTs only; no production DDL, grant, data, or migration-ledger changes were made.
+
+### Newly confirmed differences
+
+- `transactions.total_amount` is a stored generated column defined as `quantity * unit_price`. The production `set_transaction_price()` trigger also assigns `new.total_amount`, which is incompatible with writing to a generated column. Branch migration `20261027100000_fix_generated_transaction_total_trigger.sql` removes that assignment and leaves total calculation to PostgreSQL.
+- Production has 141 transaction rows at the time of the query. A generated-total test was added to the disposable database workflow so the catalog behavior is exercised alongside the transaction batch tests.
+- Production has eight employee records; four employee codes do not match the six-digit format. The mismatches include legacy prefixed and seven-digit identifiers. No identifier values were changed. The proposed employee-code constraint migration was intentionally deferred because existing rows and future updates need a deliberate remediation strategy first.
+- Production's `private.current_user_role()` is SECURITY DEFINER with an empty search path and returns a role only for the active profile matching `auth.uid()`. This supports the role checks in the proposed employee RPCs.
+- Production's `next_guest_code()` uses an advisory transaction lock, reconciles the sequence against existing `GUEST-####` codes, and returns a zero-padded `GUEST-` identifier. It is currently executable by anon and authenticated roles; the branch migration proposes making it an internal helper only.
+- The live catalog has active-row read policies plus admin management policies for employees/products/variants, and role-scoped transaction read/insert policies. The branch's RLS initplan migration changes only the two policies containing direct `auth.uid()` calls; this should be reviewed as a performance-only change.
+- The existing `transaction_report` view joins transactions to employees, variants, products, and profiles and derives volume in millilitres/litres. It must be retained in any clean baseline.
+
+### Deployment and migration-history blocker
+
+The live ledger contains seven timestamped migrations and no branch migration versions. The legacy files use duplicate numeric prefixes and some normalize existing employee identifiers. The current branch migrations are not a self-contained production baseline, and a direct `supabase db push` remains unsafe.
+
+Before any production rollout:
+
+1. Obtain the exact SQL for all seven timestamped production migrations from repository history or a trusted export; compare them against live function bodies, grants, triggers, policies, constraints, views, and indexes.
+2. Produce a clean schema-only baseline from a verified snapshot, without replaying `0001_initial_schema.sql` or data-normalizing legacy migrations over live data.
+3. Apply the baseline and forward migrations in a disposable Supabase-compatible database; include generated-column behavior, role/permission tests, and guest-ID collision/sequence tests.
+4. Decide how to handle the four legacy employee-code mismatches. Do not add or validate the six-digit constraint until the chosen policy for those records and their future updates is tested.
+5. Review the final migration plan and rollback/verification steps separately. Production remains read-only until explicit deployment approval.
+
+**Current disposition:** reconciliation has found actionable issues and the branch contains a targeted trigger fix, but this is not yet a production deployment approval or a claim of complete schema equivalence.
