@@ -119,18 +119,12 @@ jobs:
           join public.profiles pr on pr.id = t.operator_id;
           SQL
 
-      - name: Bootstrap guest-code generator dependencies for permission tests
+      - name: Bootstrap guest-code sequence and apply the real hardened generator
         run: |
-          psql -v ON_ERROR_STOP=1 <<'SQL'
-          create sequence public.guest_code_seq;
-          create or replace function public.next_guest_code()
-          returns text
-          language sql
-          set search_path = ''
-          as $$
-            select 'GUEST-' || lpad(pg_catalog.nextval('public.guest_code_seq'::pg_catalog.regclass)::text, 4, '0')
-          $$;
-          SQL
+          psql -v ON_ERROR_STOP=1 -c "create sequence public.guest_code_seq"
+          # Exercise the actual collision-safe, advisory-lock generator from repository history,
+          # rather than a test-only nextval() stub that could hide sequence-reconciliation bugs.
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/0003_harden_guest_code_generation.sql
 
       - name: Provide project helper used by current transaction policies
         run: |
@@ -221,6 +215,10 @@ jobs:
           values
             ('22222222-2222-4222-8222-222222222222', '000001', 'EMPLOYEE', 'Test Employee', true),
             ('66666666-6666-4666-8666-666666666666', '000004', 'EMPLOYEE', 'Inactive Employee', false);
+          -- Simulate an existing production guest code with the sequence still behind it.
+          insert into public.employees(id, guest_code, id_type, name, active)
+          values
+            ('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa', 'GUEST-0100', 'GUEST', 'Legacy Guest', true);
           insert into public.products(id, name, active)
           values
             ('33333333-3333-4333-8333-333333333333', 'Test Milk', true),
@@ -439,8 +437,8 @@ jobs:
             v_generated := public.create_guest_employee_with_code(
               'Generated Guest Test', '5550101234', 'QA', null
             );
-            if v_generated.guest_code is null or v_generated.guest_code = '' then
-              raise exception 'guest RPC did not generate a guest ID';
+            if v_generated.guest_code is distinct from 'GUEST-0101' then
+              raise exception 'guest RPC did not reconcile the sequence beyond the existing GUEST-0100 code; got %', v_generated.guest_code;
             end if;
 
             select * into v_match
