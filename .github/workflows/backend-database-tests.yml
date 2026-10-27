@@ -240,6 +240,77 @@ jobs:
             ('99999999-9999-4999-8999-999999999998', '77777777-7777-4777-8777-777777777777', 'Variant of inactive product', 500, 30, true);
           SQL
 
+      - name: Verify guarded profile access updates
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          set request.jwt.claim.sub = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+          set role authenticated;
+          do $profile_access_test$
+          declare rejected boolean := false;
+          begin
+            perform public.update_profile_access(
+              '11111111-1111-4111-8111-111111111111',
+              'ADMIN'::public.user_role,
+              true
+            );
+            if not exists (
+              select 1 from public.profiles
+              where id = '11111111-1111-4111-8111-111111111111'
+                and role = 'ADMIN'::public.user_role and active = true
+            ) then
+              raise exception 'admin could not update another user role';
+            end if;
+
+            perform public.update_profile_access(
+              '11111111-1111-4111-8111-111111111111',
+              'OPERATOR'::public.user_role,
+              false
+            );
+            if not exists (
+              select 1 from public.profiles
+              where id = '11111111-1111-4111-8111-111111111111'
+                and role = 'OPERATOR'::public.user_role and active = false
+            ) then
+              raise exception 'admin could not update another user status';
+            end if;
+
+            begin
+              perform public.update_profile_access(
+                'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+                'OPERATOR'::public.user_role,
+                false
+              );
+              raise exception 'expected self role/status change to be rejected';
+            exception when sqlstate '42501' then
+              rejected := true;
+            end;
+            if not rejected then
+              raise exception 'admin was able to change own access';
+            end if;
+          end $profile_access_test$;
+          reset role;
+          set request.jwt.claim.sub = '11111111-1111-4111-8111-111111111111';
+          set role authenticated;
+          do $profile_access_test$
+          declare rejected boolean := false;
+          begin
+            begin
+              perform public.update_profile_access(
+                '55555555-5555-4555-8555-555555555555',
+                'OPERATOR'::public.user_role,
+                false
+              );
+              raise exception 'expected non-admin profile access change to be rejected';
+            exception when sqlstate '42501' then
+              rejected := true;
+            end;
+            if not rejected then
+              raise exception 'operator was able to change another profile access';
+            end if;
+          end $profile_access_test$;
+          reset role;
+          SQL
+
       - name: Verify atomic product variant writes and authorization
         run: |
           psql -v ON_ERROR_STOP=1 <<'SQL'
