@@ -743,7 +743,7 @@ jobs:
             printf '%s\n' 'SET ROLE catalog_audit_ro;'
             cat supabase/tests/catalog_fingerprint_json.sql
           } > /tmp/restricted-catalog-fingerprint.sql
-          if ! psql -X -A -t -v ON_ERROR_STOP=1 -a -b \
+          if ! psql -X -A -t -v ON_ERROR_STOP=1 -b \
             -f /tmp/restricted-catalog-fingerprint.sql \
             > /tmp/restricted-catalog-fingerprint.json \
             2> /tmp/restricted-catalog-fingerprint.stderr; then
