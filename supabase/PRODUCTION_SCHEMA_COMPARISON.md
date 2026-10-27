@@ -152,3 +152,18 @@ The seven live ledger entries are timestamped versions, while the repository's l
 4. Only label a migration as source-verified when its contents are tied to the actual applied SQL or a trusted export. Keep inferred steps explicitly marked as inferred.
 
 No production schema, data, grants, or migration-ledger records were changed during this recovery.
+
+## Backend CI hardening follow-up (2026-10-27)
+
+The disposable PostgreSQL workflow was strengthened in commit [69f2e91](https://github.com/shankar2205/Honest-Dodla-Milk-EMP-Store/commit/69f2e9174ea1b8852f1b012f6a25091c1f370cc0):
+
+- Replaced the test-only `next_guest_code()` stub with the repository's actual historical collision-safe generator from `0003_harden_guest_code_generation.sql`.
+- Added a seeded legacy guest identifier (`GUEST-0100`) while the sequence starts behind it.
+- Tightened the guest-creation assertion to require the next generated identifier to be `GUEST-0101`, exercising sequence reconciliation rather than merely checking that a non-empty code was returned.
+- Backend Database Tests run #77 passed all steps, including the real generator migration, guest RPC/duplicate-phone tests, generated transaction total checks, atomic rollback checks, and catalog assertions.
+
+This is a meaningful improvement in behavior coverage, but it is **not yet a complete migration replay**. The workflow still intentionally bootstraps a Supabase-compatible database and applies selected legacy migrations in isolation; it does not prove that every legacy file and all seven timestamped production migrations can be replayed in order to produce a catalog identical to production. Concurrent guest-registration behavior is also not yet tested with parallel sessions.
+
+### Next baseline task
+
+Create an explicit, reviewed source-to-ledger mapping for the seven timestamped production migrations, then build a disposable replay harness from a trusted schema baseline. Do not treat the existing isolated CI bootstrap as proof of full-history replay, and do not apply any inferred baseline to production.
