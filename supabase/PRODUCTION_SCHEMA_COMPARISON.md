@@ -182,3 +182,19 @@ The intended compatibility posture is:
 The disposable migration assertion now verifies that the six-digit check exists but remains unvalidated, permits NULL at the check-expression level, and that create_employee retains explicit six-digit validation. This is a migration-compatibility assertion, not permission to change production.
 
 No production data or schema was changed for this decision.
+
+## Application grants and direct-write reconciliation (2026-11-21)
+
+A read-only catalog query confirmed that the six application objects (employees, products, product_variants, profiles, transactions, transaction_report) and guest_code_seq are owned by postgres. The five base tables have RLS enabled. The transaction_report view has security_invoker=true; authenticated has SELECT on it and anon does not.
+
+The public-schema default ACLs for objects created by postgres grant all table privileges to anon, authenticated, postgres, and service_role; sequence privileges to those roles; and function EXECUTE to those roles. Similar defaults exist for supabase_admin. The application tables and guest_code_seq are postgres-owned, so the candidate migration scopes application default-privilege changes to postgres and deliberately leaves supabase_admin defaults and service_role access unchanged.
+
+The UI audit found three remaining direct writes:
+
+- Employee details edit: UPDATE public.employees.
+- Employee activation/deactivation: UPDATE public.employees.
+- Product variant activation/deactivation: UPDATE public.product_variants.
+
+These screens now call guarded SECURITY DEFINER RPCs: update_employee_details, set_employee_active, and set_product_variant_active. The candidate migration then removes anon/authenticated direct table privileges on the six application objects, restores authenticated SELECT, and retains only authenticated INSERT on transactions because create_transaction_batch is SECURITY INVOKER. It also revokes direct client sequence access and tightens postgres-owned future-object defaults.
+
+The disposable backend workflow applies this candidate migration and asserts RPC security, direct-write denial, authenticated read/transaction-insert needs, and future default ACLs. This candidate has passed Backend Database Tests in CI as of 2026-11-21. It has **not** been applied to production; production grants and default privileges remain unchanged.
