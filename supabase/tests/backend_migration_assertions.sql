@@ -294,6 +294,27 @@ begin
     raise exception 'authenticated INSERT is required by SECURITY INVOKER create_transaction_batch';
   end if;
 
+  -- Trigger implementation functions are not API entry points. Revoke direct
+  -- client execution while retaining their use by already-created triggers.
+  if has_function_privilege('anon', 'public.set_updated_at()', 'EXECUTE')
+     or has_function_privilege('authenticated', 'public.set_updated_at()', 'EXECUTE')
+     or has_function_privilege('anon', 'public.set_transaction_price()', 'EXECUTE')
+     or has_function_privilege('authenticated', 'public.set_transaction_price()', 'EXECUTE') then
+    raise exception 'Client roles must not directly execute trigger-only functions';
+  end if;
+
+  if exists (
+    select 1
+    from pg_proc p
+    cross join lateral aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a
+    where p.oid in ('public.set_updated_at()'::regprocedure,
+                    'public.set_transaction_price()'::regprocedure)
+      and a.grantee = 0
+      and a.privilege_type = 'EXECUTE'
+  ) then
+    raise exception 'PUBLIC must not directly execute trigger-only functions';
+  end if;
+
   -- Future postgres-owned public objects must not silently regain client grants.
   if exists (
     select 1
