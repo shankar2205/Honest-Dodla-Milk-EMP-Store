@@ -208,7 +208,7 @@ begin
   end if;
 
   v_definition := v_constraint.definition;
-  if position('employee_code IS NULL' in lower(v_definition)) = 0
+  if position('employee_code is null' in lower(v_definition)) = 0
      or position('[0-9]{6}' in v_definition) = 0 then
     raise exception 'Unexpected employee-code check definition: %', v_definition;
   end if;
