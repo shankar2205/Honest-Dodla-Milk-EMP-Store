@@ -183,3 +183,48 @@ end;
 $$;
 
 select 'Backend migration catalog assertions passed' as result;
+
+-- Employee-code compatibility gate:
+-- Keep the six-digit CHECK NOT VALID so legacy production rows remain untouched.
+-- PostgreSQL still enforces it for new/updated rows; the create_employee RPC
+-- independently validates the six-digit format before inserting.
+do $employee_code_gate$
+declare
+  v_constraint record;
+  v_definition text;
+  v_fn_definition text;
+begin
+  select c.convalidated, pg_get_constraintdef(c.oid) as definition
+    into v_constraint
+  from pg_constraint c
+  where c.conrelid = 'public.employees'::regclass
+    and c.conname = 'employees_employee_code_six_digits_check';
+
+  if not found then
+    raise exception 'Missing employees_employee_code_six_digits_check';
+  end if;
+  if v_constraint.convalidated then
+    raise exception 'Six-digit employee-code check must remain NOT VALID until legacy rows are deliberately reconciled';
+  end if;
+
+  v_definition := v_constraint.definition;
+  if position('employee_code IS NULL' in lower(v_definition)) = 0
+     or position('[0-9]{6}' in v_definition) = 0 then
+    raise exception 'Unexpected employee-code check definition: %', v_definition;
+  end if;
+
+  select pg_get_functiondef(p.oid)
+    into v_fn_definition
+  from pg_proc p
+  join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'public'
+    and p.proname = 'create_employee'
+    and pg_get_function_identity_arguments(p.oid) =
+      'p_employee_code text, p_name text, p_phone text, p_department text';
+
+  if v_fn_definition is null
+     or position('^[0-9]{6}$' in v_fn_definition) = 0 then
+    raise exception 'create_employee must independently enforce exactly six digits';
+  end if;
+end;
+$employee_code_gate$;
