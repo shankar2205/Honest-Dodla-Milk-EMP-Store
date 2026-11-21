@@ -822,7 +822,7 @@ jobs:
           # The supplied login must be a member of catalog_audit_ro. Explicitly
           # drop into that restricted role before reading production metadata.
           {
-            printf '%s\\n' 'SET ROLE catalog_audit_ro;'
+            printf '%s\n' 'SET ROLE catalog_audit_ro;'
             cat supabase/tests/catalog_fingerprint_json.sql
           } > /tmp/production-catalog-fingerprint.sql
           psql -X -q -A -t "${PRODUCTION_DATABASE_URL}" -v ON_ERROR_STOP=1 \
