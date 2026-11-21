@@ -167,3 +167,18 @@ This is a meaningful improvement in behavior coverage, but it is **not yet a com
 ### Next baseline task
 
 Create an explicit, reviewed source-to-ledger mapping for the seven timestamped production migrations, then build a disposable replay harness from a trusted schema baseline. Do not treat the existing isolated CI bootstrap as proof of full-history replay, and do not apply any inferred baseline to production.
+
+## Legacy employee-code handling decision (2026-11-21)
+
+The four existing production employee rows whose codes do not match the six-digit format are being treated as legacy/test exceptions for this reconciliation. Their employee records, code values, and linked transactions must remain unchanged during the current migration work.
+
+The intended compatibility posture is:
+
+- Do not run 0007_enforce_six_digit_employee_codes.sql against production as part of deployment; it contains data-normalizing UPDATE statements for EMP-prefixed codes.
+- Keep employees_employee_code_six_digits_check as NOT VALID in any candidate baseline until legacy rows are deliberately reconciled. A NOT VALID check does not scan/reject existing violations at creation time, but it is enforced on subsequent inserts and updates. Consequently, updates to a legacy row that still violates the check may fail; do not modify those rows as part of this rollout.
+- Enforce six-digit values in the employee-creation RPC for all new employee records.
+- Do not validate the constraint or rewrite/null/delete the legacy codes without a separately reviewed decision.
+
+The disposable migration assertion now verifies that the six-digit check exists but remains unvalidated, permits NULL at the check-expression level, and that create_employee retains explicit six-digit validation. This is a migration-compatibility assertion, not permission to change production.
+
+No production data or schema was changed for this decision.
