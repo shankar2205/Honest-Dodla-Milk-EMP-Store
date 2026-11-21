@@ -273,3 +273,32 @@ Do not run `supabase db push`, replay the legacy migration files, or apply the c
 ### Follow-up: function default-privilege scope correction (2026-11-21)
 
 The candidate admin catalog migration was revised after review: the global postgres-owned function default-privilege revocation was removed because it could affect Supabase-managed schemas such as `storage`. The CI assertion that required this global change was also removed. Per-function EXECUTE revocations remain in the application migrations for the privileged RPCs they create; the public-schema default ACL restrictions for anon/authenticated tables, sequences, and functions remain schema-scoped. This is a branch-only correction and has not changed production.
+
+
+## Migration-chain review follow-up (2026-11-21)
+
+A second read-only review compared the pending SQL definitions with the live production catalog and the Admin Web RPC call sites.
+
+### Verified migration dependencies
+
+- `20261023000000_atomic_transaction_backend.sql` creates `create_transaction_batch` as SECURITY INVOKER. The final grant migration must retain authenticated SELECT on employees, profiles, products, and product_variants plus authenticated INSERT on transactions; otherwise the RPC cannot perform its checks and inserts under the caller's privileges/RLS.
+- Production `transactions.total_amount` is a stored generated column with expression `quantity * unit_price`. The live `set_transaction_price()` trigger currently assigns both `new.unit_price` and `new.total_amount`. The proposed `20261027100000_fix_generated_transaction_total_trigger.sql` correctly removes the generated-column assignment and leaves total computation to PostgreSQL. This migration is required before relying on the batch transaction RPC.
+- The production `operator_daily_sales(timestamptz,timestamptz)` function is SECURITY DEFINER with an empty search path, checks the active profile for the caller, and is executable by authenticated but not anon. The private role helper is also SECURITY DEFINER with an empty search path and is executable by authenticated but not anon.
+- The Admin Web pages changed in this PR call the matching RPCs for employee details, employee status, product-variant status, profile access, product/variant writes, and batched transactions. Read paths continue to use authenticated SELECT.
+- The candidate privileged RPC migrations explicitly revoke PUBLIC/anon execution before granting authenticated execution. The employee-creation functions are replaced in place, preserving their already-restricted production ACLs; verify effective ACLs after deployment rather than assuming CREATE OR REPLACE resets them.
+
+### Employee-code rollout constraint
+
+The disposable CI bootstrap applies the legacy `0007_employee_code_text_and_validation.sql` and `0007_enforce_six_digit_employee_codes.sql` files. The latter performs data-normalizing UPDATEs; it must not be replayed against production. The former adds a NOT VALID six-digit CHECK. Although NOT VALID skips scanning existing rows, PostgreSQL enforces it on every subsequent INSERT or UPDATE of a row. Consequently, editing or toggling one of the four legacy employee rows can fail even when the employee_code value is not changed.
+
+The production migration ledger does not contain either legacy `0007` migration, and no timestamped forward migration in this PR adds that CHECK. Therefore the CI assertion that expects the CHECK describes the legacy disposable bootstrap, not the actual production forward-migration sequence. Keep this distinction explicit. Given the agreed decision to leave the four legacy records and linked transactions untouched, do not introduce or validate the CHECK in production in this rollout. The `create_employee` RPC's six-digit validation remains the gate for new employee codes.
+
+### Remaining release blockers
+
+1. Exact applied SQL for all seven production ledger versions is still not available; the source map remains partly inferred. Do not claim a complete historical replay or schema parity.
+2. The workflow's production-vs-disposable fingerprint job has not been run with its `workflow_dispatch` input enabled. Existing green CI runs validate the disposable harness only.
+3. Run the full application smoke test against a disposable database with the final reduced grants, including Admin and Operator reads, transaction creation, product editing, employee editing/status changes, and profile access changes.
+4. Review leaked-password protection in Supabase Auth as a separate dashboard security setting; no Auth setting has been changed.
+5. Keep production read-only until the migration source map, deployment order, rollback/verification plan, and an explicit deployment approval are complete.
+
+No production schema, data, grants, default privileges, Auth settings, or migration history were changed during this review.
