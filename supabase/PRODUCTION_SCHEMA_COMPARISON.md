@@ -302,3 +302,10 @@ The production migration ledger does not contain either legacy `0007` migration,
 5. Keep production read-only until the migration source map, deployment order, rollback/verification plan, and an explicit deployment approval are complete.
 
 No production schema, data, grants, default privileges, Auth settings, or migration history were changed during this review.
+
+
+## Trigger-helper EXECUTE privilege follow-up (2026-11-21)
+
+The latest live catalog fingerprint showed that the trigger-only functions `public.set_updated_at()` and `public.set_transaction_price()` still inherited direct EXECUTE access for client roles (and PUBLIC on `set_updated_at`). These are trigger implementation details, not RPC entry points. The grants migration now explicitly revokes EXECUTE from PUBLIC, anon, and authenticated on both functions. The backend catalog assertion checks that these grants are absent. Existing triggers remain attached; PostgreSQL checks EXECUTE permission when a trigger is created, not each time it fires.
+
+This is a branch-only hardening change. Production has not been modified. Verify the new migration/test revision in CI before considering deployment.
