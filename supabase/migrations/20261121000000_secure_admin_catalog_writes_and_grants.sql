@@ -137,5 +137,9 @@ alter default privileges for role postgres in schema public
   revoke all on tables from anon, authenticated;
 alter default privileges for role postgres in schema public
   revoke all on sequences from anon, authenticated;
+-- PostgreSQL grants EXECUTE to PUBLIC on new functions by default at the
+-- role-wide level; remove that global default, then explicitly grant RPC access.
+alter default privileges for role postgres
+  revoke execute on functions from public;
 alter default privileges for role postgres in schema public
-  revoke execute on functions from public, anon, authenticated;
+  revoke execute on functions from anon, authenticated;
