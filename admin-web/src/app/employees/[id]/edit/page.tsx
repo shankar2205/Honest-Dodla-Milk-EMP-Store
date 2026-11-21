@@ -35,10 +35,12 @@ export default function EditEmployee() {
   async function save(event: React.FormEvent) {
     event.preventDefault();
     setSaving(true);
-    const { error: saveError } = await supabase
-      .from("employees")
-      .update({ name, department: dept || null, phone: phone || null })
-      .eq("id", params.id);
+    const { error: saveError } = await supabase.rpc("update_employee_details", {
+      p_employee_id: params.id,
+      p_name: name,
+      p_department: dept || null,
+      p_phone: phone || null,
+    });
 
     if (saveError) {
       setError(saveError.message);
