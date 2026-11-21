@@ -242,6 +242,9 @@ jobs:
             ('99999999-9999-4999-8999-999999999998', '77777777-7777-4777-8777-777777777777', 'Variant of inactive product', 500, 30, true);
           SQL
 
+      - name: Verify guarded admin catalog write RPCs
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/admin_catalog_write_integration.sql
+
       - name: Verify guarded profile access updates
         run: |
           psql -v ON_ERROR_STOP=1 <<'SQL'
