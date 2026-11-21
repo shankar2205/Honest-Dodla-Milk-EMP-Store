@@ -228,3 +228,97 @@ begin
   end if;
 end;
 $employee_code_gate$;
+
+-- Remaining admin catalog writes must use guarded RPCs, not direct table UPDATEs.
+do $admin_catalog_write_gate$
+declare
+  v_name text;
+  v_args text;
+  v_fn record;
+  v_table text;
+  v_privilege text;
+begin
+  for v_name, v_args in
+    select * from (values
+      ('update_employee_details', 'p_employee_id uuid, p_name text, p_department text, p_phone text'),
+      ('set_employee_active', 'p_employee_id uuid, p_active boolean'),
+      ('set_product_variant_active', 'p_variant_id uuid, p_active boolean')
+    ) as expected(name, args)
+  loop
+    select p.oid, p.prosecdef, p.proconfig
+      into v_fn
+    from pg_proc p
+    join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public'
+      and p.proname = v_name
+      and pg_get_function_identity_arguments(p.oid) = v_args;
+
+    if not found then
+      raise exception 'Missing admin catalog RPC: %', v_name;
+    end if;
+    if not v_fn.prosecdef
+       or not coalesce(v_fn.proconfig @> array['search_path=""'], false) then
+      raise exception '% must be SECURITY DEFINER with empty search_path', v_name;
+    end if;
+    if not has_function_privilege('authenticated', v_fn.oid, 'EXECUTE')
+       or has_function_privilege('anon', v_fn.oid, 'EXECUTE') then
+      raise exception 'Unexpected EXECUTE grants on %', v_name;
+    end if;
+  end loop;
+
+  foreach v_table in array array[
+    'public.employees', 'public.products', 'public.product_variants',
+    'public.profiles', 'public.transactions', 'public.transaction_report'
+  ]
+  loop
+    if not has_table_privilege('authenticated', v_table, 'SELECT') then
+      raise exception 'authenticated SELECT missing on %', v_table;
+    end if;
+    if has_table_privilege('anon', v_table, 'SELECT') then
+      raise exception 'anon must not SELECT %', v_table;
+    end if;
+
+    foreach v_privilege in array array['INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']
+    loop
+      if has_table_privilege('anon', v_table, v_privilege) then
+        raise exception 'anon must not have % on %', v_privilege, v_table;
+      end if;
+      if has_table_privilege('authenticated', v_table, v_privilege)
+         and not (v_table = 'public.transactions' and v_privilege = 'INSERT') then
+        raise exception 'authenticated must not have direct % on %', v_privilege, v_table;
+      end if;
+    end loop;
+  end loop;
+
+  if not has_table_privilege('authenticated', 'public.transactions', 'INSERT') then
+    raise exception 'authenticated INSERT is required by SECURITY INVOKER create_transaction_batch';
+  end if;
+
+  -- Future postgres-owned public objects must not silently regain client grants.
+  if exists (
+    select 1
+    from pg_default_acl d
+    join pg_namespace n on n.oid = d.defaclnamespace
+    cross join lateral aclexplode(d.defaclacl) a
+    where d.defaclrole = 'postgres'::regrole
+      and n.nspname = 'public'
+      and d.defaclobjtype in ('r','S','f')
+      and a.grantee in ('anon'::regrole, 'authenticated'::regrole)
+  ) then
+    raise exception 'postgres default privileges still grant anon/authenticated access to future public objects';
+  end if;
+
+  if exists (
+    select 1
+    from pg_default_acl d
+    cross join lateral aclexplode(d.defaclacl) a
+    where d.defaclrole = 'postgres'::regrole
+      and d.defaclnamespace = 0
+      and d.defaclobjtype = 'f'
+      and a.grantee = 0
+      and a.privilege_type = 'EXECUTE'
+  ) then
+    raise exception 'postgres still grants PUBLIC EXECUTE on future functions by default';
+  end if;
+end;
+$admin_catalog_write_gate$;
