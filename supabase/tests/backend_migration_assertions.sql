@@ -308,17 +308,8 @@ begin
     raise exception 'postgres default privileges still grant anon/authenticated access to future public objects';
   end if;
 
-  if exists (
-    select 1
-    from pg_default_acl d
-    cross join lateral aclexplode(d.defaclacl) a
-    where d.defaclrole = 'postgres'::regrole
-      and d.defaclnamespace = 0
-      and d.defaclobjtype = 'f'
-      and a.grantee = 0
-      and a.privilege_type = 'EXECUTE'
-  ) then
-    raise exception 'postgres still grants PUBLIC EXECUTE on future functions by default';
-  end if;
+  -- PUBLIC EXECUTE remains PostgreSQL's global default; application migrations
+  -- must explicitly revoke it on every privileged RPC they create. Avoid a
+  -- global default-privilege change that would alter Supabase-managed schemas.
 end;
 $admin_catalog_write_gate$;
