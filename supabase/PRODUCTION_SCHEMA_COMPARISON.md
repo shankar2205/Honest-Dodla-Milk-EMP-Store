@@ -198,3 +198,25 @@ The UI audit found three remaining direct writes:
 These screens now call guarded SECURITY DEFINER RPCs: update_employee_details, set_employee_active, and set_product_variant_active. The candidate migration then removes anon/authenticated direct table privileges on the six application objects, restores authenticated SELECT, and retains only authenticated INSERT on transactions because create_transaction_batch is SECURITY INVOKER. It also revokes direct client sequence access and tightens postgres-owned future-object defaults.
 
 The disposable backend workflow applies this candidate migration and asserts RPC security, direct-write denial, authenticated read/transaction-insert needs, and future default ACLs. This candidate has passed Backend Database Tests in CI as of 2026-11-21. It has **not** been applied to production; production grants and default privileges remain unchanged.
+
+
+## Read-only Supabase advisor snapshot (2026-11-21)
+
+Supabase Security and Performance Advisors were queried against the live project. This was an advisory/read-only check; no production settings, schema, grants, or data were changed.
+
+### Security findings
+
+- Three existing authenticated-callable SECURITY DEFINER RPCs were flagged: `create_employee`, `create_guest_employee`, and `operator_daily_sales`. These are intentional application RPC entry points, but they require explicit authorization checks in their function bodies and careful EXECUTE grants. The candidate branch migration adds three more admin-only SECURITY DEFINER RPCs; those are guarded by `auth.uid()` plus `private.current_user_role() = 'ADMIN'`, and CI exercises admin success/operator denial.
+- Leaked-password protection is disabled in Supabase Auth. This is a project Auth setting, not a SQL migration. Review enabling it in the Supabase Dashboard under Auth password/security settings before the next production release.
+
+### Performance findings
+
+- The live `profiles` self-read and `transactions` insert policies still call `auth.uid()` without the scalar-subquery initplan form. This matches the known production-vs-branch difference; the branch's RLS tuning migration is intended to address these two policies.
+- Four indexes were reported unused at the time of the advisor snapshot: `employees_name_idx`, `transactions_date_idx`, `transactions_product_date_idx`, and `transactions_operator_id_idx`. Do not drop them based on this snapshot alone; usage statistics can reset and workload coverage may be incomplete.
+- Multiple permissive SELECT policies were reported for employees, products, product_variants, and profiles. The policies are intentionally layered (active-row read plus admin management); any consolidation should preserve the current row visibility and admin access semantics.
+
+### Default-privilege scope check
+
+A read-only catalog query found postgres-owned function default ACL entries in both `public` and `storage`. The candidate migration's global (non-schema-scoped) `ALTER DEFAULT PRIVILEGES FOR ROLE postgres REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC` therefore has cross-schema scope, even though its table/sequence/function anon/authenticated revocations are scoped to `public`. Review the storage impact and Supabase-managed function-creation expectations before production rollout; do not silently treat the global function default as public-schema-only.
+
+**Disposition:** advisor warnings are review items, not evidence of an active exploit or approval to alter production. No production changes were made by this check.
