@@ -127,6 +127,12 @@ to authenticated;
 
 grant insert on table public.transactions to authenticated;
 
+-- These functions are trigger-only implementation details, not client RPCs.
+-- PostgreSQL checks EXECUTE when a trigger is created, not on every trigger
+-- invocation, so the trigger continues to work after client EXECUTE is revoked.
+revoke all on function public.set_updated_at() from public, anon, authenticated;
+revoke all on function public.set_transaction_price() from public, anon, authenticated;
+
 -- Guest IDs are allocated inside SECURITY DEFINER RPCs; callers do not need
 -- direct sequence privileges.
 revoke all on all sequences in schema public from anon, authenticated;
