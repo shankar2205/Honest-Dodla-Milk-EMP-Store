@@ -220,3 +220,51 @@ Supabase Security and Performance Advisors were queried against the live project
 A read-only catalog query found postgres-owned function default ACL entries in both `public` and `storage`. The candidate migration's global (non-schema-scoped) `ALTER DEFAULT PRIVILEGES FOR ROLE postgres REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC` therefore has cross-schema scope, even though its table/sequence/function anon/authenticated revocations are scoped to `public`. Review the storage impact and Supabase-managed function-creation expectations before production rollout; do not silently treat the global function default as public-schema-only.
 
 **Disposition:** advisor warnings are review items, not evidence of an active exploit or approval to alter production. No production changes were made by this check.
+
+
+## Fresh production catalog audit (2026-11-21)
+
+A further read-only audit was run directly against project `bbnvqktefmdpgzlqlzml` using catalog SELECTs and Supabase Security, Performance, and Health Advisors. No production DDL, DML, grants, default privileges, Auth settings, or migration-ledger records were changed.
+
+### Migration ledger and application object inventory
+
+The live migration ledger still contains exactly these seven versions, ending at `20261012112124`:
+
+- `20261007100518 add_guest_employee_creator`
+- `20261007100537 fix_guest_employee_creator_role`
+- `20261007100634 restrict_guest_employee_creator_rpc`
+- `20261007102015 add_counter_employee_registration`
+- `20261009101008 harden_guest_code_generation`
+- `20261012111425 operator_daily_litres_kpi`
+- `20261012112124 fix_operator_daily_litres_kpi_role_check`
+
+No PR migration dated 2026-10-23 through 2026-11-21 appears in the production ledger. The live app catalog currently contains five base tables, one view, and fourteen indexes. It has the five expected RLS-enabled base tables.
+
+Production has 20 employee rows, of which four still fail the six-digit employee-code pattern. This is a count only; identifiers and employee data were not changed. The six-digit CHECK constraint is absent. The existing `employees_identifier_check` requires employee-type rows to have a non-NULL employee_code, so the agreed legacy-row exception remains: leave all four records and linked transactions untouched.
+
+### RPC and RLS drift confirmed
+
+The following branch-target RPCs are absent from production at this audit: `create_transaction_batch`, `save_product_variant`, `update_profile_access`, `find_guest_by_phone`, `create_guest_employee_with_code`, `update_employee_details`, `set_employee_active`, and `set_product_variant_active`. Production still has `create_employee`, `create_guest_employee`, `next_guest_code`, and `operator_daily_sales`.
+
+Production `create_employee` and `create_guest_employee` remain SECURITY DEFINER with `search_path=public`; authenticated can execute them and anon cannot. `next_guest_code()` remains executable by both anon and authenticated, despite the branch proposal to restrict it to internal use. The two RLS policies identified earlier still use direct `auth.uid()` calls: the profile self-read policy and transaction insert policy. Their scalar-subquery/initplan tuning has not been applied.
+
+### Effective client grants: important deployment gap
+
+The fresh privilege query confirms that anon and authenticated retain all seven table privileges (DELETE, INSERT, REFERENCES, SELECT, TRIGGER, TRUNCATE, UPDATE) on each of the five application tables: employees, products, product_variants, profiles, and transactions. Authenticated retains all seven privileges on `transaction_report`; anon has no direct table grant on that view. Anon and authenticated also retain USAGE and SELECT on `public.guest_code_seq`.
+
+The postgres-owned default ACLs still grant anon/authenticated broad table, sequence, and function privileges for future objects in `public`. Postgres-owned defaults also exist in `storage`. Supabase-admin-owned defaults are present across managed schemas, including public, storage, graphql, and graphql_public. This confirms that the candidate privilege-tightening migration has not been applied.
+
+**Security significance:** RLS policies do not replace table-level privilege revocation. The current broad table grants mean clients retain direct SQL privileges subject to RLS; the PR's proposed migration would narrow those grants and route admin mutations through guarded RPCs. Do not apply that migration blindly: first complete the deployment review, validate all app flows against the reduced grants, and resolve the global default-privilege statement's cross-schema scope. The migration deliberately does not alter service_role grants or supabase_admin defaults.
+
+### Supabase Advisor snapshot
+
+- Security: three existing authenticated-callable SECURITY DEFINER functions are flagged: `create_employee`, `create_guest_employee`, and `operator_daily_sales`. These need function-body authorization and EXECUTE-grant review; the warnings alone do not establish an exploit. Leaked-password protection is disabled in Auth and requires a separate Dashboard setting review.
+- Performance: the same two RLS initplan warnings remain on `profiles` and `transactions`; four indexes are reported unused (`employees_name_idx`, `transactions_date_idx`, `transactions_product_date_idx`, `transactions_operator_id_idx`). Do not drop indexes based only on a point-in-time usage snapshot.
+- Performance: multiple permissive SELECT policies remain on employees, products, product_variants, and profiles. Any consolidation must preserve active-row visibility and admin access.
+- Health: no advisor findings were returned in this snapshot.
+
+### Deployment disposition
+
+This audit confirms that production is materially behind the PR's candidate backend migrations, especially in RPC availability, client grants/default ACLs, guest-code generator exposure, and RLS policy tuning. It is a production-vs-branch drift inventory, **not** a full object-by-object equivalence comparison against a captured disposable CI fingerprint. The workflow's production comparison job still needs to be run to produce that artifact.
+
+Do not run `supabase db push`, replay the legacy migration files, or apply the candidate grant/RPC migration to production yet. The next engineering gate is to review the exact production diff and migration order, specifically the global postgres function-default ACL change, and then test the reduced-grant application paths in a disposable environment. Keep the four legacy employee rows unchanged. Production remains read-only pending a separately approved deployment plan.
