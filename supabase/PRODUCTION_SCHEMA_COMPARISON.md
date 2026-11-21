@@ -217,7 +217,7 @@ Supabase Security and Performance Advisors were queried against the live project
 
 ### Default-privilege scope check
 
-A read-only catalog query found postgres-owned function default ACL entries in both `public` and `storage`. The candidate migration's global (non-schema-scoped) `ALTER DEFAULT PRIVILEGES FOR ROLE postgres REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC` therefore has cross-schema scope, even though its table/sequence/function anon/authenticated revocations are scoped to `public`. Review the storage impact and Supabase-managed function-creation expectations before production rollout; do not silently treat the global function default as public-schema-only.
+A read-only catalog query found postgres-owned function default ACL entries in both `public` and `storage`. The initial candidate migration used a global (non-schema-scoped) `ALTER DEFAULT PRIVILEGES FOR ROLE postgres REVOKE EXECUTE ON FUNCTIONS FROM PUBLIC`, which would have affected future postgres-owned functions in `storage` as well as `public`. This was identified as too broad and has now been removed from the branch migration. The revised migration keeps anon/authenticated default-privilege revocations scoped to `public` and explicitly revokes PUBLIC/anon EXECUTE on each privileged RPC it creates before granting intended caller roles. PostgreSQL's built-in PUBLIC EXECUTE default for future functions remains unchanged globally; future application RPC migrations must continue to revoke it explicitly. Supabase-managed schemas are not altered by this candidate change.
 
 **Disposition:** advisor warnings are review items, not evidence of an active exploit or approval to alter production. No production changes were made by this check.
 
@@ -268,3 +268,8 @@ The postgres-owned default ACLs still grant anon/authenticated broad table, sequ
 This audit confirms that production is materially behind the PR's candidate backend migrations, especially in RPC availability, client grants/default ACLs, guest-code generator exposure, and RLS policy tuning. It is a production-vs-branch drift inventory, **not** a full object-by-object equivalence comparison against a captured disposable CI fingerprint. The workflow's production comparison job still needs to be run to produce that artifact.
 
 Do not run `supabase db push`, replay the legacy migration files, or apply the candidate grant/RPC migration to production yet. The next engineering gate is to review the exact production diff and migration order, specifically the global postgres function-default ACL change, and then test the reduced-grant application paths in a disposable environment. Keep the four legacy employee rows unchanged. Production remains read-only pending a separately approved deployment plan.
+
+
+### Follow-up: function default-privilege scope correction (2026-11-21)
+
+The candidate admin catalog migration was revised after review: the global postgres-owned function default-privilege revocation was removed because it could affect Supabase-managed schemas such as `storage`. The CI assertion that required this global change was also removed. Per-function EXECUTE revocations remain in the application migrations for the privileged RPCs they create; the public-schema default ACL restrictions for anon/authenticated tables, sequences, and functions remain schema-scoped. This is a branch-only correction and has not changed production.
