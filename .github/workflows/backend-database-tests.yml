@@ -101,29 +101,26 @@ jobs:
           grant execute on function private.current_user_role() to authenticated;
           SQL
 
-      - name: Apply legacy employee-code migrations in isolation
+      - name: Preserve production employee-code compatibility in disposable baseline
         run: |
-          # The initial schema view depends on employee_code; this historical
-          # type-change migration predates the final view definition.
-          psql -v ON_ERROR_STOP=1 -c "drop view public.transaction_report"
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/0007_employee_code_text_and_validation.sql
-          psql -v ON_ERROR_STOP=1 -f supabase/migrations/0007_enforce_six_digit_employee_codes.sql
+          # Production already stores employee_code as text. Do not replay legacy
+          # migrations that add a table CHECK or normalize existing employee rows.
           psql -v ON_ERROR_STOP=1 <<'SQL'
-          create or replace view public.transaction_report as
-          select t.id, t.transaction_at,
-            e.name as employee_name,
-            coalesce(e.employee_code, e.guest_code) as employee_identifier,
-            e.id_type, e.department,
-            p.name as product_name, pv.variant_name, pv.unit_volume_ml,
-            t.quantity,
-            (t.quantity * pv.unit_volume_ml) as total_volume_ml,
-            round((t.quantity * pv.unit_volume_ml)::numeric / 1000, 3) as total_volume_litres,
-            t.unit_price, t.total_amount, pr.display_name as operator_name
-          from public.transactions t
-          join public.employees e on e.id = t.employee_id
-          join public.product_variants pv on pv.id = t.product_variant_id
-          join public.products p on p.id = pv.product_id
-          join public.profiles pr on pr.id = t.operator_id;
+          do $$
+          begin
+            if (select data_type from information_schema.columns
+                where table_schema = 'public' and table_name = 'employees'
+                  and column_name = 'employee_code') <> 'text' then
+              raise exception 'employees.employee_code must remain text';
+            end if;
+            if exists (
+              select 1 from pg_constraint
+              where conrelid = 'public.employees'::regclass
+                and conname = 'employees_employee_code_six_digits_check'
+            ) then
+              raise exception 'Legacy six-digit table CHECK must not be part of this rollout baseline';
+            end if;
+          end $$;
           SQL
 
       - name: Bootstrap guest-code sequence and apply the real hardened generator
