@@ -320,8 +320,3 @@ begin
   -- global default-privilege change that would alter Supabase-managed schemas.
 end;
 $admin_catalog_write_gate$;
- in v_fn_definition) = 0 then
-    raise exception 'create_employee must independently enforce exactly six digits';
-  end if;
-end;
-$employee_code_gate$;
