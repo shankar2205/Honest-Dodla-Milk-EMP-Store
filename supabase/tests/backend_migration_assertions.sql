@@ -22,7 +22,7 @@ begin
   if v_fn.prosecdef then
     raise exception 'create_transaction_batch must be SECURITY INVOKER';
   end if;
-  if not coalesce(v_fn.proconfig @> array['search_path=""'], false) then
+  if not coalesce(v_fn.proconfig @> array['search_path=' || chr(34) || chr(34)], false) then
     raise exception 'create_transaction_batch must set an empty search_path';
   end if;
 
@@ -48,7 +48,7 @@ begin
   if not v_fn.prosecdef then
     raise exception 'save_product_variant must be SECURITY DEFINER to perform privileged catalog writes after its explicit ADMIN role check';
   end if;
-  if not coalesce(v_fn.proconfig @> array['search_path=""'], false) then
+  if not coalesce(v_fn.proconfig @> array['search_path=' || chr(34) || chr(34)], false) then
     raise exception 'save_product_variant must set an empty search_path';
   end if;
   if not has_function_privilege('authenticated', 'public.save_product_variant(uuid,text,text,integer,numeric)', 'EXECUTE') then
@@ -73,7 +73,7 @@ begin
   if not v_fn.prosecdef then
     raise exception 'update_profile_access must be SECURITY DEFINER';
   end if;
-  if not coalesce(v_fn.proconfig @> array['search_path=""'], false) then
+  if not coalesce(v_fn.proconfig @> array['search_path=' || chr(34) || chr(34)], false) then
     raise exception 'update_profile_access must set an empty search_path';
   end if;
   if not has_function_privilege('authenticated', 'public.update_profile_access(uuid,public.user_role,boolean)', 'EXECUTE') then
@@ -102,7 +102,7 @@ begin
     if not v_fn.prosecdef then
       raise exception '% must remain SECURITY DEFINER', v_policy;
     end if;
-    if not coalesce(v_fn.proconfig @> array['search_path=""'], false) then
+    if not coalesce(v_fn.proconfig @> array['search_path=' || chr(34) || chr(34)], false) then
       raise exception '% must set an empty search_path', v_policy;
     end if;
     if not has_function_privilege('authenticated', v_fn.oid, 'EXECUTE') then
@@ -129,7 +129,7 @@ begin
     if not v_fn.prosecdef then
       raise exception '% must remain SECURITY DEFINER', v_policy;
     end if;
-    if not coalesce(v_fn.proconfig @> array['search_path=""'], false) then
+    if not coalesce(v_fn.proconfig @> array['search_path=' || chr(34) || chr(34)], false) then
       raise exception '% must set an empty search_path', v_policy;
     end if;
     if not has_function_privilege('authenticated', v_fn.oid, 'EXECUTE') then
@@ -239,7 +239,7 @@ begin
       raise exception 'Missing admin catalog RPC: %', v_name;
     end if;
     if not v_fn.prosecdef
-       or not coalesce(v_fn.proconfig @> array['search_path=""'], false) then
+       or not coalesce(v_fn.proconfig @> array['search_path=' || chr(34) || chr(34)], false) then
       raise exception '% must be SECURITY DEFINER with empty search_path', v_name;
     end if;
     if not has_function_privilege('authenticated', v_fn.oid, 'EXECUTE')
@@ -350,7 +350,7 @@ begin
       raise exception 'Missing admin catalog RPC: %', v_name;
     end if;
     if not v_fn.prosecdef
-       or not coalesce(v_fn.proconfig @> array['search_path=""'], false) then
+       or not coalesce(v_fn.proconfig @> array['search_path=' || chr(34) || chr(34)], false) then
       raise exception '% must be SECURITY DEFINER with empty search_path', v_name;
     end if;
     if not has_function_privilege('authenticated', v_fn.oid, 'EXECUTE')
