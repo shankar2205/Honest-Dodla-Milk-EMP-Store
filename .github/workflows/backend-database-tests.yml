@@ -653,11 +653,29 @@ jobs:
               raise exception 'normalized duplicate-phone lookup did not return the created guest';
             end if;
 
+            begin
+              perform public.create_guest_employee_with_code(
+                'Operator Custom Guest Test', '5550105678', 'QA', 'GUEST-CI-OP-0001'
+              );
+              raise exception 'operator unexpectedly supplied a custom guest code';
+            exception when others then
+              if sqlerrm = 'operator unexpectedly supplied a custom guest code' then raise; end if;
+              if sqlerrm <> 'Administrator access required' then raise; end if;
+            end;
+          end $guest_test$;
+          reset role;
+
+          set request.jwt.claim.sub = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+          set role authenticated;
+          do $admin_guest_test$
+          declare
+            v_custom public.employees;
+          begin
             v_custom := public.create_guest_employee_with_code(
               'Custom Guest Test', '5550105678', 'QA', 'GUEST-CI-0001'
             );
             if v_custom.guest_code <> 'GUEST-CI-0001' then
-              raise exception 'custom guest ID was not preserved';
+              raise exception 'Admin custom guest ID was not preserved';
             end if;
 
             begin
@@ -669,9 +687,19 @@ jobs:
               if sqlerrm = 'duplicate guest ID was accepted' then raise; end if;
               if sqlerrm <> 'Guest ID already exists' then raise; end if;
             end;
-          end $guest_test$;
+
+            begin
+              perform public.create_guest_employee_with_code(
+                'Invalid Guest Test', null, null, 'BAD CODE!'
+              );
+              raise exception 'invalid guest ID was accepted';
+            exception when others then
+              if sqlerrm = 'invalid guest ID was accepted' then raise; end if;
+              if sqlerrm <> 'Guest ID contains invalid characters' then raise; end if;
+            end;
+          end $admin_guest_test$;
           reset role;
-          select 'secure guest creation, generated/custom IDs, and normalized duplicate lookup assertions passed' as result;
+          select 'Operator generated guest creation, Operator custom-code denial, Admin custom-code success, duplicate/invalid checks, and normalized duplicate lookup assertions passed' as result;
           SQL
 
       - name: Verify concurrent guest registrations receive unique sequential codes
