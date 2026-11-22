@@ -209,7 +209,7 @@ begin
       'p_employee_code text, p_name text, p_phone text, p_department text';
 
   if v_fn_definition is null
-     or position('^[0-9]{6}' || chr(36) in v_fn_definition) = 0 then
+     or strpos(v_fn_definition, '^[0-9]{6}' || chr(36)) = 0 then
     raise exception 'create_employee must independently enforce exactly six digits';
   end if;
 end;
