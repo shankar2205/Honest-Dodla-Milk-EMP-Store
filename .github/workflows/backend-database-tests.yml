@@ -87,6 +87,9 @@ jobs:
       - name: Apply initial schema to disposable database
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/0001_initial_schema.sql
 
+      - name: Align disposable baseline with production-specific catalog objects
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/production_catalog_baseline.sql
+
       - name: Provide project helper used by legacy employee RPC
         run: |
           psql -v ON_ERROR_STOP=1 <<'SQL'
@@ -152,6 +155,36 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261027120000_atomic_product_variant_admin_write.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261027130000_guard_profile_access_changes.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261121000000_secure_admin_catalog_writes_and_grants.sql
+
+      - name: Assert production-only reporting objects survive candidate migrations
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          do $
+          declare fn record;
+          begin
+            if to_regprocedure('public.operator_daily_sales(timestamp with time zone,timestamp with time zone)') is null then
+              raise exception 'production operator_daily_sales function was removed';
+            end if;
+            select prosecdef, proconfig into fn
+            from pg_proc
+            where oid = 'public.operator_daily_sales(timestamptz,timestamptz)'::regprocedure;
+            if not fn.prosecdef then
+              raise exception 'operator_daily_sales must remain SECURITY DEFINER';
+            end if;
+            if not coalesce(fn.proconfig @> array['search_path=' || chr(34) || chr(34)], false) then
+              raise exception 'operator_daily_sales must retain an empty search_path';
+            end if;
+            if has_function_privilege('anon', 'public.operator_daily_sales(timestamptz,timestamptz)', 'EXECUTE')
+              or not has_function_privilege('authenticated', 'public.operator_daily_sales(timestamptz,timestamptz)', 'EXECUTE')
+              or not has_function_privilege('service_role', 'public.operator_daily_sales(timestamptz,timestamptz)', 'EXECUTE') then
+              raise exception 'operator_daily_sales execute grants differ from production policy';
+            end if;
+            if to_regclass('public.transactions_operator_id_idx') is null then
+              raise exception 'production transactions_operator_id_idx was removed';
+            end if;
+          end $;
+          select 'production-only reporting function and operator index preserved' as result;
+          SQL
 
       - name: Run shared backend migration assertions
         run: psql -v ON_ERROR_STOP=1 -f supabase/tests/backend_migration_assertions.sql
