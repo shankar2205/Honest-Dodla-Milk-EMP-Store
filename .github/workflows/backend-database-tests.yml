@@ -168,7 +168,7 @@ jobs:
               and pg_get_function_identity_arguments(p.oid)='p_employee_id uuid, p_items jsonb';
             if not found then raise exception 'transaction RPC missing'; end if;
             if fn.prosecdef then raise exception 'transaction RPC must be SECURITY INVOKER'; end if;
-            if not coalesce(fn.proconfig @> array['search_path=""'], false) then
+            if not coalesce(fn.proconfig @> array['search_path=' || chr(34) || chr(34)], false) then
               raise exception 'transaction RPC must have empty search_path';
             end if;
             if not has_function_privilege('authenticated','public.create_transaction_batch(uuid,jsonb)','EXECUTE') then
