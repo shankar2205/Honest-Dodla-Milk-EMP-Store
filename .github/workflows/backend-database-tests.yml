@@ -159,7 +159,7 @@ jobs:
       - name: Assert production-only reporting objects survive candidate migrations
         run: |
           psql -v ON_ERROR_STOP=1 <<'SQL'
-          do $
+          do $assert$
           declare fn record;
           begin
             if to_regprocedure('public.operator_daily_sales(timestamp with time zone,timestamp with time zone)') is null then
@@ -182,7 +182,7 @@ jobs:
             if to_regclass('public.transactions_operator_id_idx') is null then
               raise exception 'production transactions_operator_id_idx was removed';
             end if;
-          end $;
+          end $assert$;
           select 'production-only reporting function and operator index preserved' as result;
           SQL
 
