@@ -209,7 +209,11 @@ begin
       'p_employee_code text, p_name text, p_phone text, p_department text';
 
   if v_fn_definition is null
-     or position('^[0-9]{6}
+     or position('^[0-9]{6}' || chr(36) in v_fn_definition) = 0 then
+    raise exception 'create_employee must independently enforce exactly six digits';
+  end if;
+end;
+$employee_code_gate$;
 
 -- Remaining admin catalog writes must use guarded RPCs, not direct table UPDATEs.
 do $admin_catalog_write_gate$
