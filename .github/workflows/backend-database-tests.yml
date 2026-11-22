@@ -583,13 +583,13 @@ jobs:
             end;
             if not rejected then raise exception 'blank employee name was accepted'; end if;
             reset role;
-            begin
-              insert into public.employees(employee_code, id_type, name, active)
-              values ('12AB56', 'EMPLOYEE', 'Constraint Test', true);
-            exception when check_violation then
-              rejected := true;
-            end;
-            if not rejected then raise exception 'employee-code CHECK constraint did not reject invalid code'; end if;
+            if exists (
+              select 1 from pg_constraint
+              where conrelid = 'public.employees'::regclass
+                and conname = 'employees_employee_code_six_digits_check'
+            ) then
+              raise exception 'legacy employee-code table CHECK must remain absent';
+            end if;
           end $$;
           reset role;
           select 'employee-code validation assertions passed' as result;
