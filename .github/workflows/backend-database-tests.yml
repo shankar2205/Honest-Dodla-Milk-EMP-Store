@@ -639,8 +639,8 @@ jobs:
             v_custom public.employees;
             v_match public.employees;
           begin
-            v_generated := public.create_guest_employee_with_code(
-              'Generated Guest Test', '5550101234', 'QA', null
+            v_generated := public.create_guest_employee(
+              'Generated Guest Test', '5550101234', 'QA'
             );
             if v_generated.guest_code is distinct from 'GUEST-0101' then
               raise exception 'guest RPC did not reconcile the sequence beyond the existing GUEST-0100 code; got %', v_generated.guest_code;
