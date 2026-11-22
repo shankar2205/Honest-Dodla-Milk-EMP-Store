@@ -11,8 +11,8 @@ declare
   v_employee public.employees;
   v_digits text;
 begin
-  if coalesce(private.current_user_role()::text, '') <> 'ADMIN' then
-    raise exception 'Administrator access required';
+  if coalesce(private.current_user_role()::text, '') not in ('ADMIN', 'OPERATOR') then
+    raise exception 'Not authorized';
   end if;
 
   v_digits := pg_catalog.regexp_replace(coalesce(p_phone, ''), '[^0-9]', '', 'g');
@@ -57,8 +57,8 @@ declare
   v_guest_code text;
   v_employee public.employees;
 begin
-  if coalesce(private.current_user_role()::text, '') not in ('ADMIN', 'OPERATOR') then
-    raise exception 'Not authorized';
+  if coalesce(private.current_user_role()::text, '') <> 'ADMIN' then
+    raise exception 'Administrator access required';
   end if;
 
   if nullif(trim(coalesce(p_name, '')), '') is null then
