@@ -9,6 +9,7 @@ select jsonb_pretty(jsonb_build_object(
     from (
       select e.extname, e.extversion, n.nspname as schema_name
       from pg_extension e join pg_namespace n on n.oid = e.extnamespace
+      where e.extname = 'pgcrypto' -- Supabase-managed extensions vary by environment.
     ) x
   ), '[]'::jsonb),
 
@@ -104,22 +105,31 @@ select jsonb_pretty(jsonb_build_object(
   'triggers', coalesce((
     select jsonb_agg(to_jsonb(x) order by x.object_key)
     from (
-      select event_object_schema || '.' || event_object_table || '.' || trigger_name ||
-             '.' || event_manipulation as object_key,
-             event_object_schema as schema_name, event_object_table as table_name,
-             trigger_name, action_timing, event_manipulation,
-             action_orientation, action_statement
-      from information_schema.triggers
-      where event_object_schema in ('public', 'private')
+      select n.nspname || '.' || c.relname || '.' || t.tgname as object_key,
+             n.nspname as schema_name, c.relname as table_name,
+             t.tgname as trigger_name, t.tgenabled as enabled,
+             pg_get_triggerdef(t.oid, true) as definition
+      from pg_trigger t
+      join pg_class c on c.oid = t.tgrelid
+      join pg_namespace n on n.oid = c.relnamespace
+      where n.nspname in ('public', 'private')
+        and not t.tgisinternal
     ) x
   ), '[]'::jsonb),
 
   'indexes', coalesce((
     select jsonb_agg(to_jsonb(x) order by x.object_key)
     from (
-      select schemaname || '.' || tablename || '.' || indexname as object_key,
-             schemaname, tablename, indexname, indexdef
-      from pg_indexes where schemaname in ('public', 'private')
+      select ns.nspname || '.' || tbl.relname || '.' || idx.relname as object_key,
+             ns.nspname as schemaname, tbl.relname as tablename,
+             idx.relname as indexname, pg_get_indexdef(i.indexrelid) as indexdef,
+             i.indisunique as is_unique, i.indisprimary as is_primary,
+             i.indisvalid as is_valid, i.indisready as is_ready
+      from pg_index i
+      join pg_class tbl on tbl.oid = i.indrelid
+      join pg_class idx on idx.oid = i.indexrelid
+      join pg_namespace ns on ns.oid = tbl.relnamespace
+      where ns.nspname in ('public', 'private')
     ) x
   ), '[]'::jsonb),
 
@@ -146,7 +156,7 @@ select jsonb_pretty(jsonb_build_object(
              table_schema, table_name, grantee, privilege_type, is_grantable
       from information_schema.role_table_grants
       where table_schema in ('public', 'private')
-        and grantee in ('anon', 'authenticated', 'service_role', 'postgres')
+        and grantee in ('anon', 'authenticated', 'service_role')
     ) x
   ), '[]'::jsonb)
 ))::text;
