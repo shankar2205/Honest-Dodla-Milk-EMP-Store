@@ -172,15 +172,14 @@ Create an explicit, reviewed source-to-ledger mapping for the seven timestamped 
 
 The four existing production employee rows whose codes do not match the six-digit format are being treated as legacy/test exceptions for this reconciliation. Their employee records, code values, and linked transactions must remain unchanged during the current migration work.
 
-The intended compatibility posture is:
+The agreed compatibility posture is:
 
-- Do not run 0007_enforce_six_digit_employee_codes.sql against production as part of deployment; it contains data-normalizing UPDATE statements for EMP-prefixed codes.
-- Keep employees_employee_code_six_digits_check as NOT VALID in any candidate baseline until legacy rows are deliberately reconciled. A NOT VALID check does not scan/reject existing violations at creation time, but it is enforced on subsequent inserts and updates. Consequently, updates to a legacy row that still violates the check may fail; do not modify those rows as part of this rollout.
-- Enforce six-digit values in the employee-creation RPC for all new employee records.
-- Do not validate the constraint or rewrite/null/delete the legacy codes without a separately reviewed decision.
+- Do not run 0007_enforce_six_digit_employee_codes.sql against production; it contains data-normalizing UPDATE statements for legacy employee codes.
+- Do not add the six-digit table CHECK to the production schema or candidate baseline in this rollout. Even a NOT VALID check is enforced on later updates to existing rows and could block edits to the four legacy records.
+- Enforce six-digit values in the employee-creation RPC for new employee records only.
+- Leave all four legacy employee records, their code values, and linked transactions unchanged. Do not rewrite, null, delete, or validate a six-digit table constraint without a separately reviewed decision.
 
-The disposable migration assertion now verifies that the six-digit check exists but remains unvalidated, permits NULL at the check-expression level, and that create_employee retains explicit six-digit validation. This is a migration-compatibility assertion, not permission to change production.
-
+The current disposable workflow asserts that the six-digit table CHECK is absent and that create_employee independently enforces exactly six digits. This preserves legacy-row update compatibility while validating new employee creation.
 No production data or schema was changed for this decision.
 
 ## Application grants and direct-write reconciliation (2026-11-21)
@@ -289,9 +288,9 @@ A second read-only review compared the pending SQL definitions with the live pro
 
 ### Employee-code rollout constraint
 
-The disposable CI bootstrap applies the legacy `0007_employee_code_text_and_validation.sql` and `0007_enforce_six_digit_employee_codes.sql` files. The latter performs data-normalizing UPDATEs; it must not be replayed against production. The former adds a NOT VALID six-digit CHECK. Although NOT VALID skips scanning existing rows, PostgreSQL enforces it on every subsequent INSERT or UPDATE of a row. Consequently, editing or toggling one of the four legacy employee rows can fail even when the employee_code value is not changed.
+The current disposable CI bootstrap intentionally does **not** apply either legacy `0007` file. One file adds a NOT VALID six-digit CHECK; the other normalizes legacy employee identifiers and includes employee-creation logic. Neither is part of the verified production migration ledger, and neither is safe to replay blindly.
 
-The production migration ledger does not contain either legacy `0007` migration, and no timestamped forward migration in this PR adds that CHECK. Therefore the CI assertion that expects the CHECK describes the legacy disposable bootstrap, not the actual production forward-migration sequence. Keep this distinction explicit. Given the agreed decision to leave the four legacy records and linked transactions untouched, do not introduce or validate the CHECK in production in this rollout. The `create_employee` RPC's six-digit validation remains the gate for new employee codes.
+A NOT VALID check is still enforced on every later INSERT or UPDATE of a row. It could therefore block edits or status changes to the four legacy employee rows even when their employee_code value is not changed. The current CI assertion correctly expects the six-digit table CHECK to be absent and verifies six-digit validation inside the `create_employee` RPC instead. Keep the four legacy records and linked transactions unchanged.
 
 ### Remaining release blockers
 
