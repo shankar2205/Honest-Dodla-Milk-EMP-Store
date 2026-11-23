@@ -923,7 +923,7 @@ jobs:
               "differences": items,
           }
           Path("artifacts/production-vs-disposable-catalog-review.json").write_text(
-              json.dumps(report, indent=2, sort_keys=True) + "\\n",
+              json.dumps(report, indent=2, sort_keys=True) + chr(10),
               encoding="utf-8",
           )
           print("Created redacted catalog review report (paths and change types only).")
