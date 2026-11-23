@@ -155,6 +155,7 @@ jobs:
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261027120000_atomic_product_variant_admin_write.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261027130000_guard_profile_access_changes.sql
           psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261121000000_secure_admin_catalog_writes_and_grants.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261123000000_reconcile_policy_role_helpers_and_admin_defaults.sql
 
       - name: Assert production-only reporting objects survive candidate migrations
         run: |
