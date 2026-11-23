@@ -902,3 +902,38 @@ jobs:
               # are present in the full diff and must not be printed into public workflow logs.
               print(f"- {item['kind']}: {item['path']}")
           PY
+
+
+      - name: Build redacted production catalog review report
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.compare_production_catalog }}
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          source = json.loads(Path("artifacts/production-vs-disposable-catalog-diff.json").read_text())
+          items = []
+          for item in source["differences"]:
+              path = item["path"]
+              section = path.strip("/").split("/", 1)[0] if path else "other"
+              items.append({"kind": item["kind"], "section": section, "path": path})
+          report = {
+              "equal": source["equal"],
+              "difference_count": source["difference_count"],
+              "redaction": "Object definitions, policy expressions, and privilege values are intentionally omitted.",
+              "differences": items,
+          }
+          Path("artifacts/production-vs-disposable-catalog-review.json").write_text(
+              json.dumps(report, indent=2, sort_keys=True) + "\\n",
+              encoding="utf-8",
+          )
+          print("Created redacted catalog review report (paths and change types only).")
+          PY
+
+      - name: Upload redacted production catalog review report
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.compare_production_catalog }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: redacted-production-catalog-review-${{ github.sha }}
+          path: artifacts/production-vs-disposable-catalog-review.json
+          if-no-files-found: error
+          retention-days: 14
