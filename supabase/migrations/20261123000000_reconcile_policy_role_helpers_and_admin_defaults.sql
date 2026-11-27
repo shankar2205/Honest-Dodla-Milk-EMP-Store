@@ -48,8 +48,14 @@ create policy "admins and operators can read transactions" on public.transaction
 
 -- Remove the anonymous/PUBLIC RPC exposure from the legacy helper. Keep
 -- authenticated EXECUTE temporarily for compatibility with any older client.
-revoke all on function public.current_user_role() from public, anon, service_role;
-grant execute on function public.current_user_role() to authenticated;
+DO $legacy_helper$
+BEGIN
+  IF to_regprocedure('public.current_user_role()') IS NOT NULL THEN
+    EXECUTE 'REVOKE ALL ON FUNCTION public.current_user_role() FROM PUBLIC, anon, service_role';
+    EXECUTE 'GRANT EXECUTE ON FUNCTION public.current_user_role() TO authenticated';
+  END IF;
+END;
+$legacy_helper$;
 
 -- Match the production private-helper contract: only authenticated policy
 -- evaluation needs EXECUTE. The function owner retains implicit privileges.
