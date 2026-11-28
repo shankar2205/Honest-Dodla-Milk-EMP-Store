@@ -3,6 +3,24 @@
 -- PUBLIC/anon access. All policies use private.current_user_role() consistently.
 -- Tighten future public-object defaults for both known object-creation owners.
 
+-- Fail before any DDL if this runner cannot manage supabase_admin defaults.
+DO $preflight$
+DECLARE
+  v_is_superuser boolean;
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'supabase_admin') THEN
+    SELECT rolsuper INTO v_is_superuser
+    FROM pg_roles WHERE rolname = current_user;
+
+    IF NOT coalesce(v_is_superuser, false)
+       AND NOT pg_has_role(current_user, 'supabase_admin', 'MEMBER') THEN
+      RAISE EXCEPTION
+        'Migration requires authority over supabase_admin default privileges; current role "%" is not a member or superuser. Run with an authorized migration role.',
+        current_user;
+    END IF;
+  END IF;
+END;
+$preflight$;
 drop policy if exists "admins manage employees" on public.employees;
 create policy "admins manage employees" on public.employees
   for all to authenticated
