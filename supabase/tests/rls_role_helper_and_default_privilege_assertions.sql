@@ -95,19 +95,19 @@ begin
     raise exception 'An RLS policy still depends on public.current_user_role()';
   end if;
 
-  -- Both object-creation owners must stop granting table/sequence/function
-  -- access to anon/authenticated by default. service_role is intentionally kept.
+  -- Application-owned postgres defaults must not grant table/sequence/function
+  -- access to anon/authenticated. service_role is intentionally kept.
   if exists (
     select 1
     from pg_default_acl d
     join pg_namespace n on n.oid = d.defaclnamespace
     cross join lateral aclexplode(d.defaclacl) a
     where n.nspname = 'public'
-      and d.defaclrole in ('postgres'::regrole, 'supabase_admin'::regrole)
+      and d.defaclrole = 'postgres'::regrole
       and d.defaclobjtype in ('r', 'S', 'f')
       and a.grantee in ('anon'::regrole, 'authenticated'::regrole)
   ) then
-    raise exception 'postgres/supabase_admin default privileges still grant anon/authenticated access';
+    raise exception 'postgres default privileges still grant anon/authenticated access';
   end if;
 end;
 $assertions$;
