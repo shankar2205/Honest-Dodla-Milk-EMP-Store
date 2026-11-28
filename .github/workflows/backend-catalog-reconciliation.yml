@@ -1,0 +1,109 @@
+name: Backend Catalog Reconciliation Tests
+
+on:
+  pull_request:
+    branches:
+      - fix/dashboard-employee-code-validation
+    paths:
+      - 'supabase/migrations/**'
+      - 'supabase/tests/**'
+      - '.github/workflows/backend-catalog-reconciliation.yml'
+
+jobs:
+  catalog-reconciliation:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: catalog_reconciliation_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d catalog_reconciliation_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: catalog_reconciliation_test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Bootstrap disposable Supabase-compatible roles and auth schema
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          create role anon nologin;
+          create role authenticated nologin;
+          create role service_role nologin bypassrls;
+          create role supabase_admin nologin;
+          create schema auth;
+          create schema private;
+          create table auth.users (id uuid primary key);
+          create function auth.uid() returns uuid
+            language sql stable
+            as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+          grant usage on schema auth, private, public to authenticated, anon;
+          grant execute on function auth.uid() to authenticated, anon;
+
+          -- Reproduce the broad public-schema defaults found for supabase_admin
+          -- in production so the migration must actively remove them.
+          alter default privileges for role supabase_admin in schema public
+            grant all on tables to anon, authenticated, service_role;
+          alter default privileges for role supabase_admin in schema public
+            grant all on sequences to anon, authenticated, service_role;
+          alter default privileges for role supabase_admin in schema public
+            grant execute on functions to anon, authenticated, service_role;
+          SQL
+
+      - name: Apply disposable baseline and project role helper
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/0001_initial_schema.sql
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          create or replace function private.current_user_role()
+          returns public.user_role
+          language sql stable security definer
+          set search_path = ''
+          as $$
+            select p.role from public.profiles p
+            where p.id = auth.uid() and p.active = true
+          $$;
+          grant execute on function private.current_user_role() to authenticated;
+
+          create or replace function public.set_transaction_price()
+          returns trigger
+          language plpgsql
+          as $$ begin return new; end $$;
+          SQL
+
+      - name: Verify supabase_admin fixture starts with broad defaults
+        run: |
+          psql -v ON_ERROR_STOP=1 <<'SQL'
+          do $$
+          begin
+            if not exists (
+              select 1 from pg_default_acl d
+              join pg_namespace n on n.oid = d.defaclnamespace
+              cross join lateral aclexplode(d.defaclacl) a
+              where d.defaclrole = 'supabase_admin'::regrole
+                and n.nspname = 'public'
+                and d.defaclobjtype in ('r', 'S', 'f')
+                and a.grantee in ('anon'::regrole, 'authenticated'::regrole)
+            ) then
+              raise exception 'supabase_admin test fixture did not create broad defaults';
+            end if;
+          end $$;
+          SQL
+
+      - name: Apply current catalog grant migration and RLS reconciliation
+        run: |
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261121000000_secure_admin_catalog_writes_and_grants.sql
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261123000000_reconcile_policy_role_helpers_and_admin_defaults.sql
+
+      - name: Assert policy dependencies and future-object privileges
+        run: psql -v ON_ERROR_STOP=1 -f supabase/tests/rls_role_helper_and_default_privilege_assertions.sql

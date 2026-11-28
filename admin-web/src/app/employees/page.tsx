@@ -32,7 +32,10 @@ export default function EmployeesPage() {
     const action = employee.active ? "deactivate" : "activate";
     if (!window.confirm(`Are you sure you want to ${action} ${employee.name}?`)) return;
     setError("");
-    const { error: x } = await supabase.from("employees").update({ active: !employee.active }).eq("id", employee.id);
+    const { error: x } = await supabase.rpc("set_employee_active", {
+      p_employee_id: employee.id,
+      p_active: !employee.active,
+    });
     if (x) setError(x.message); else load();
   }
 
