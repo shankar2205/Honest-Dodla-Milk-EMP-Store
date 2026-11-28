@@ -55,3 +55,40 @@ The live `private.current_user_role()` definition is SECURITY DEFINER with an em
 ### Next engineering step
 
 The stored migration SQL is now recovered. Next, build a clean disposable baseline from a schema-only production snapshot, then replay only the reviewed forward migrations and rerun the catalog fingerprint. Keep `find_guest_by_phone` explicitly classified as a branch-added RPC because it is absent from the live production function catalog. Preserve `operator_daily_sales` from production. Do not apply the six-digit table constraint or data-normalizing legacy migration, and keep the four legacy employee records and their transactions unchanged. No deployment is implied.
+
+
+## Fresh baseline replay and validation update (2026-11-28)
+
+A fresh schema-only baseline was exported from the verified local production snapshot and restored into disposable database `emp_schema_baseline_verify_20261128`. The archive SHA-256 was recorded locally as `027D8E4004D580FAC2F021A37E649AA1AD76C483530FF2BD7C13A28E131F6E76`. The source and restored schema fingerprints matched: 9 schemas, 11 tables, 4 views, 79 functions, 2 sequences, 10 policies, 5 triggers, and 138 constraints. The schema-only database contained no application or Auth rows, as expected.
+
+All ten timestamped forward migrations in the PR were replayed chronologically on this fresh baseline:
+
+1. `20261023000000_atomic_transaction_backend.sql`
+2. `20261023010000_rls_auth_uid_initplan_tuning.sql`
+3. `20261023020000_harden_employee_rpc_search_path.sql`
+4. `20261026000000_restrict_guest_code_generator.sql`
+5. `20261027000000_restore_admin_guest_employee_rpcs.sql`
+6. `20261027100000_fix_generated_transaction_total_trigger.sql`
+7. `20261027120000_atomic_product_variant_admin_write.sql`
+8. `20261027130000_guard_profile_access_changes.sql`
+9. `20261121000000_secure_admin_catalog_writes_and_grants.sql`
+10. `20261123000000_reconcile_policy_role_helpers_and_admin_defaults.sql`
+
+Migrations 1–9 succeeded under local role `postgres`. Migration 10's policy and helper changes ran, but its final default-privilege block failed under `postgres` because that role was not a member of `supabase_admin`. The complete migration was rerun successfully under local `supabase_admin` (superuser). This is an important production-runner prerequisite: verify the actual production migration execution role can alter defaults for `supabase_admin` before any deployment; do not infer that from the local environment.
+
+Post-replay checks on the fresh baseline confirmed:
+
+- Zero rows in employees, products, product_variants, profiles, transactions, and auth.users, as expected for schema-only restore.
+- RLS enabled on all five public application tables; exactly two policies on each, with the expected policy names.
+- The expected eight RPCs are present, all with `search_path=""`; SECURITY DEFINER settings match the reviewed function inventory.
+- Authenticated-only grants were confirmed for `create_guest_employee_with_code`, `create_transaction_batch`, `save_product_variant`, and `update_profile_access`; `next_guest_code` is not executable by anon, authenticated, or service_role.
+- `create_employee` and `operator_daily_sales` showed inherited PUBLIC EXECUTE in this schema-only restore because the archive was produced with `--no-acl`. This result is not evidence of production grants and is not used as such.
+- No default ACL rows remained in this schema-only baseline. Preservation of service_role defaults was separately validated in `emp_backup_acl_verify_20261127` after seeding production-like defaults: migrations 9 and 10 removed anon/authenticated defaults and preserved service_role table, sequence, and function defaults for both `postgres` and `supabase_admin` owners.
+
+The separate full-data restore validation also preserved all four legacy employee records and their 69 linked transactions unchanged. The seven original production migration-ledger entries remain intact; this replay did not write to production or alter the historical ledger.
+
+GitHub Actions on PR head `e2c53eb77b81b1b51e0f0f4ba5d39c6b99b22d9e` passed: Backend Catalog Reconciliation Tests (#5), Backend Database Tests (#182), Admin Web Build (#393), and Android Counter Build (#386).
+
+### Current conclusion and deployment caveat
+
+The ten-migration chain is validated against a fresh schema-only baseline and a separate restored production-data/ACL test harness. The legacy numbered migrations remain unreconciled as CLI migration versions; do not rename them or run `supabase db push` as a shortcut. Before production deployment, explicitly verify the production migration runner can modify `supabase_admin` default privileges, review rollback/verification steps, and obtain separate authorization. Preserve the four legacy employee rows and their transactions. No production change, merge, or deployment was performed.
