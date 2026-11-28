@@ -31,3 +31,23 @@ The production project currently has its own recorded timestamped migration hist
 ## Current status
 
 This note documents a known local migration-history blocker. It does not modify database schema, data, grants, policies, or production migration records. New forward migrations in this branch remain unapplied.
+
+
+## Validation update — 2026-11-28
+
+This section supersedes the earlier statement above that the forward migrations remain unapplied. The following validation has now been completed on disposable local databases only:
+
+- A schema-only production snapshot was exported, checksum-verified, restored into a fresh database, and its structural fingerprint compared with the source snapshot.
+- The seven production migration-ledger records were exported from the restored full backup and reviewed; production migration history was not changed.
+- All ten timestamped forward migrations in this branch were replayed in chronological order against the fresh schema-only baseline. Migrations 1–9 completed as `postgres`. Migration 10 initially stopped at the `supabase_admin` default-privilege block because the local `postgres` role is not a member of `supabase_admin`; the complete migration then succeeded when rerun as the local `supabase_admin` superuser.
+- Post-replay checks confirmed five application tables have RLS enabled and two policies each; the expected eight RPCs exist with empty search paths; and the restricted RPCs have the expected authenticated-only grants.
+- The schema-only archive was created with `--no-acl`. Consequently, its restored function ACLs do not preserve production ACLs: `create_employee` and `operator_daily_sales` show inherited PUBLIC EXECUTE in this replay. Do not use those two effective-grant results as production ACL evidence.
+- A separate full-production-backup ACL test, with production-like default privileges seeded, confirmed migrations 9 and 10 remove anon/authenticated defaults while preserving service_role defaults. The four legacy employee records and their 69 linked transactions remained unchanged in the full-data validation database.
+- GitHub Actions for Backend Catalog Reconciliation Tests, Backend Database Tests, Admin Web Build, and Android Counter Build passed on PR head `e2c53eb77b81b1b51e0f0f4ba5d39c6b99b22d9e`.
+
+### Remaining migration-history and release safeguards
+
+- The ten forward migrations have been validated as a disposable replay chain; this does not reconcile or rewrite the seven historical production ledger records and does not authorize `supabase db push`.
+- **Before production execution, verify the migration runner's effective authority to alter default privileges for objects created by `supabase_admin`.** The local replay proved that a non-member `postgres` role cannot alter those defaults; rerunning as `supabase_admin` succeeded. Do not assume the production runner has equivalent membership or superuser authority.
+- Preserve the four legacy employee codes and their linked transactions. Do not replay `0007_enforce_six_digit_employee_codes.sql` or add a table-level six-digit constraint.
+- Production remains unchanged. No merge, deployment, production migration, or production write is authorized by this validation.
